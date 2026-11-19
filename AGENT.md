@@ -11,6 +11,7 @@ This repository follows a strict Full-Stack Monorepo architecture containing bot
 - **Layer Isolation**: Respect architectural boundaries. Never bypass layers (e.g., Controllers must never touch Models directly; Frontend UI must never call raw fetch directly).
 - **ESLint Cleanliness**: Adhere strictly to ESLint rules with zero lint errors or warnings.
 - **API Documentation Synchronization**: Whenever any new API route is created, updated, or removed, always update the simple list of API routes in `README.md` (Method + Path + Auth status).
+- **Architecture Documentation Synchronization**: Whenever any module is implemented, updated, or refactored, automatically synchronize `./SYSTEM_ARCHITECTURE_DOCUMENTATION.md` to keep the system design, data dictionary, API contracts, and revision history fully aligned with the live codebase.
 
 ---
 
