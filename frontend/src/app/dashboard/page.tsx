@@ -2,6 +2,17 @@
 
 import React from "react";
 import Link from "next/link";
+import {
+  AttendanceIcon,
+  ChevronDownIcon,
+  TotalEmployeesIcon,
+  PresentCheckIcon,
+  AbsentCrossIcon,
+  LateClockIcon,
+  BanknotesIcon,
+  ClockOutlineIcon,
+  DocumentTextIcon,
+} from "../../components/icons";
 
 export default function DashboardPage() {
   return (
@@ -20,18 +31,9 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="inline-flex items-center self-start sm:self-auto gap-2 px-3.5 py-1.5 bg-white rounded-xl border border-slate-200/90 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer select-none">
-          <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
+          <AttendanceIcon className="w-3.5 h-3.5 text-slate-500" />
           <span>November 2026</span>
-          <svg className="w-3 h-3 text-slate-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M19 9l-7 7-7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-          </svg>
+          <ChevronDownIcon className="w-3 h-3 text-slate-400 ml-1" />
         </div>
       </div>
 
@@ -40,9 +42,7 @@ export default function DashboardPage() {
         {/* Total Employees */}
         <div className="bg-white rounded-2xl p-4 border border-teal-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#ccf2ed] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-[#008272]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 3s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-            </svg>
+            <TotalEmployeesIcon className="w-5 h-5 text-[#008272]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Total Employees</p>
@@ -57,13 +57,7 @@ export default function DashboardPage() {
         {/* Present Employees */}
         <div className="bg-white rounded-2xl p-4 border border-teal-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#d0f5e7] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-[#059669]" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                clipRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                fillRule="evenodd"
-              />
-            </svg>
+            <PresentCheckIcon className="w-5 h-5 text-[#059669]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Present Employees</p>
@@ -78,13 +72,7 @@ export default function DashboardPage() {
         {/* Absent Employees */}
         <div className="bg-white rounded-2xl p-4 border border-rose-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#ffe4e3] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-[#ef4444]" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                clipRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                fillRule="evenodd"
-              />
-            </svg>
+            <AbsentCrossIcon className="w-5 h-5 text-[#ef4444]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Absent Employees</p>
@@ -99,13 +87,7 @@ export default function DashboardPage() {
         {/* Late Employees */}
         <div className="bg-white rounded-2xl p-4 border border-purple-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#ede9fe] flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-[#7c3aed]" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                clipRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                fillRule="evenodd"
-              />
-            </svg>
+            <LateClockIcon className="w-5 h-5 text-[#7c3aed]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Late Employees</p>
@@ -125,14 +107,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between pb-2">
             <div className="flex items-center gap-2">
               <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  />
-                </svg>
+                <AttendanceIcon className="w-4 h-4" />
               </div>
               <h2 className="text-xs sm:text-sm font-bold text-slate-800">Attendance Summary</h2>
             </div>
@@ -216,14 +191,7 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2 pb-1">
               <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  />
-                </svg>
+                <BanknotesIcon className="w-4 h-4" />
               </div>
               <h2 className="text-xs sm:text-sm font-bold text-slate-800">Total Monthly Payroll</h2>
             </div>
@@ -260,14 +228,7 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2 pb-1">
               <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                  />
-                </svg>
+                <ClockOutlineIcon className="w-4 h-4" />
               </div>
               <h2 className="text-xs sm:text-sm font-bold text-slate-800">Overtime Summary</h2>
             </div>
@@ -297,14 +258,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-6 bg-white rounded-2xl p-4 sm:p-5 border border-teal-50 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center gap-2 mb-3">
             <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                />
-              </svg>
+              <DocumentTextIcon className="w-4 h-4" />
             </div>
             <h2 className="text-xs sm:text-sm font-bold text-slate-800">Payroll Status</h2>
           </div>

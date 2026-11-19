@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import { ReactNode, ComponentType } from "react";
+import { IconProps } from "./icon.types";
 
 export interface SidebarContextType {
   isCollapsed: boolean;
@@ -15,5 +16,5 @@ export interface SidebarProviderProps {
 export interface SidebarNavItem {
   title: string;
   href: string;
-  icon: (props: { className?: string }) => ReactNode;
+  icon: ComponentType<IconProps>;
 }
