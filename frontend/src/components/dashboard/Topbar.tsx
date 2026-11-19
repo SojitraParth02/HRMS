@@ -45,12 +45,12 @@ export const Topbar: React.FC = () => {
           className="lg:hidden p-2 -ml-2 text-slate-700 hover:text-teal-700 rounded-lg transition-colors cursor-pointer"
           type="button"
         >
-          <MenuIcon className="w-6 h-6 stroke-[2.2]" />
+          <MenuIcon className="w-6 h-6" />
         </button>
 
         <div className="relative w-full max-w-xs sm:max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-            <SearchIcon className="w-4 h-4 stroke-[2]" />
+            <SearchIcon className="w-4 h-4" />
           </div>
           <input
             className="w-full pl-9 pr-3 py-1.5 sm:py-2 bg-white/90 border border-slate-200/90 rounded-full text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#008272] transition-all shadow-2xs text-slate-800"
@@ -67,7 +67,7 @@ export const Topbar: React.FC = () => {
           className="relative p-2 text-slate-600 hover:text-slate-800 transition-colors cursor-pointer"
           type="button"
         >
-          <NotificationsIcon className="w-5 h-5 stroke-[2]" />
+          <NotificationsIcon className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white">
             2
           </span>
@@ -85,7 +85,7 @@ export const Topbar: React.FC = () => {
               {displayRole}
             </span>
           </div>
-          <ChevronDownIcon className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 hidden sm:block transition-transform duration-200" />
+          <ChevronDownIcon className="w-4 h-4 text-slate-400 group-hover:text-slate-600 hidden sm:block transition-transform duration-200" />
         </div>
       </div>
     </header>

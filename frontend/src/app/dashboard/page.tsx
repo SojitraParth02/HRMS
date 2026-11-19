@@ -3,15 +3,16 @@
 import React from "react";
 import Link from "next/link";
 import {
-  AttendanceIcon,
+  CalendarTodayIcon,
   ChevronDownIcon,
-  TotalEmployeesIcon,
-  PresentCheckIcon,
-  AbsentCrossIcon,
-  LateClockIcon,
-  BanknotesIcon,
-  ClockOutlineIcon,
-  DocumentTextIcon,
+  GroupIcon,
+  CheckCircleIcon,
+  CancelIcon,
+  AccessTimeIcon,
+  PaymentsIcon,
+  ReceiptLongIcon,
+  CheckIcon,
+  ArrowForwardIcon,
 } from "../../components/icons";
 
 export default function DashboardPage() {
@@ -31,9 +32,9 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="inline-flex items-center self-start sm:self-auto gap-2 px-3.5 py-1.5 bg-white rounded-xl border border-slate-200/90 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors cursor-pointer select-none">
-          <AttendanceIcon className="w-3.5 h-3.5 text-slate-500" />
+          <CalendarTodayIcon className="w-3.5 h-3.5 text-slate-500" />
           <span>November 2026</span>
-          <ChevronDownIcon className="w-3 h-3 text-slate-400 ml-1" />
+          <ChevronDownIcon className="w-3.5 h-3.5 text-slate-400 ml-1" />
         </div>
       </div>
 
@@ -42,7 +43,7 @@ export default function DashboardPage() {
         {/* Total Employees */}
         <div className="bg-white rounded-2xl p-4 border border-teal-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#ccf2ed] flex items-center justify-center shrink-0">
-            <TotalEmployeesIcon className="w-5 h-5 text-[#008272]" />
+            <GroupIcon className="w-5 h-5 text-[#008272]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Total Employees</p>
@@ -57,7 +58,7 @@ export default function DashboardPage() {
         {/* Present Employees */}
         <div className="bg-white rounded-2xl p-4 border border-teal-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#d0f5e7] flex items-center justify-center shrink-0">
-            <PresentCheckIcon className="w-5 h-5 text-[#059669]" />
+            <CheckCircleIcon className="w-5 h-5 text-[#059669]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Present Employees</p>
@@ -72,7 +73,7 @@ export default function DashboardPage() {
         {/* Absent Employees */}
         <div className="bg-white rounded-2xl p-4 border border-rose-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#ffe4e3] flex items-center justify-center shrink-0">
-            <AbsentCrossIcon className="w-5 h-5 text-[#ef4444]" />
+            <CancelIcon className="w-5 h-5 text-[#ef4444]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Absent Employees</p>
@@ -87,7 +88,7 @@ export default function DashboardPage() {
         {/* Late Employees */}
         <div className="bg-white rounded-2xl p-4 border border-purple-50 shadow-2xs relative overflow-hidden flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-full bg-[#ede9fe] flex items-center justify-center shrink-0">
-            <LateClockIcon className="w-5 h-5 text-[#7c3aed]" />
+            <AccessTimeIcon className="w-5 h-5 text-[#7c3aed]" />
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500">Late Employees</p>
@@ -106,17 +107,17 @@ export default function DashboardPage() {
         <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-teal-50 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center justify-between pb-2">
             <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-                <AttendanceIcon className="w-4 h-4" />
+              <div className="p-1 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+                <CalendarTodayIcon className="w-4 h-4" />
               </div>
               <h2 className="text-xs sm:text-sm font-bold text-slate-800">Attendance Summary</h2>
             </div>
             <Link
-              className="text-[11px] font-semibold text-teal-700 hover:underline inline-flex items-center gap-0.5"
+              className="text-[11px] font-semibold text-teal-700 hover:underline inline-flex items-center gap-1"
               href="/dashboard/attendance"
             >
               <span>View Details</span>
-              <span>→</span>
+              <ArrowForwardIcon className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -190,8 +191,8 @@ export default function DashboardPage() {
         <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-teal-50 shadow-2xs flex flex-col justify-between overflow-hidden relative">
           <div>
             <div className="flex items-center gap-2 pb-1">
-              <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-                <BanknotesIcon className="w-4 h-4" />
+              <div className="p-1 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+                <PaymentsIcon className="w-4 h-4" />
               </div>
               <h2 className="text-xs sm:text-sm font-bold text-slate-800">Total Monthly Payroll</h2>
             </div>
@@ -227,8 +228,8 @@ export default function DashboardPage() {
         <div className="lg:col-span-4 bg-white rounded-2xl p-4 sm:p-5 border border-teal-50 shadow-2xs flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 pb-1">
-              <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-                <ClockOutlineIcon className="w-4 h-4" />
+              <div className="p-1 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+                <AccessTimeIcon className="w-4 h-4" />
               </div>
               <h2 className="text-xs sm:text-sm font-bold text-slate-800">Overtime Summary</h2>
             </div>
@@ -257,8 +258,8 @@ export default function DashboardPage() {
         {/* Payroll Status */}
         <div className="lg:col-span-6 bg-white rounded-2xl p-4 sm:p-5 border border-teal-50 shadow-2xs flex flex-col justify-between">
           <div className="flex items-center gap-2 mb-3">
-            <div className="p-1 rounded-lg bg-teal-50 text-teal-700">
-              <DocumentTextIcon className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+              <ReceiptLongIcon className="w-4 h-4" />
             </div>
             <h2 className="text-xs sm:text-sm font-bold text-slate-800">Payroll Status</h2>
           </div>
@@ -339,7 +340,7 @@ export default function DashboardPage() {
                 <div className="w-full h-1.5 rounded bg-teal-100" />
                 <div className="w-full h-1.5 rounded bg-teal-100" />
                 <div className="w-3.5 h-3.5 rounded bg-[#008b8b] text-white flex items-center justify-center text-[8px] font-bold">
-                  ✓
+                  <CheckIcon className="w-2.5 h-2.5 text-white" />
                 </div>
               </div>
             </div>

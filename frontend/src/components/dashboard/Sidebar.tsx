@@ -26,32 +26,44 @@ const NAV_ITEMS: SidebarNavItem[] = [
   {
     title: "Dashboard",
     href: "/dashboard",
-    icon: DashboardIcon,
+    icon: ({ className }: { className?: string }): React.ReactNode => (
+      <DashboardIcon className={className ?? "w-5 h-5 shrink-0"} />
+    ),
   },
   {
     title: "Employees",
     href: "/dashboard/employees",
-    icon: EmployeesIcon,
+    icon: ({ className }: { className?: string }): React.ReactNode => (
+      <EmployeesIcon className={className ?? "w-5 h-5 shrink-0"} />
+    ),
   },
   {
     title: "Attendance",
     href: "/dashboard/attendance",
-    icon: AttendanceIcon,
+    icon: ({ className }: { className?: string }): React.ReactNode => (
+      <AttendanceIcon className={className ?? "w-5 h-5 shrink-0"} />
+    ),
   },
   {
     title: "Payroll",
     href: "/dashboard/payroll",
-    icon: PayrollIcon,
+    icon: ({ className }: { className?: string }): React.ReactNode => (
+      <PayrollIcon className={className ?? "w-5 h-5 shrink-0"} />
+    ),
   },
   {
     title: "Reports",
     href: "/dashboard/reports",
-    icon: ReportsIcon,
+    icon: ({ className }: { className?: string }): React.ReactNode => (
+      <ReportsIcon className={className ?? "w-5 h-5 shrink-0"} />
+    ),
   },
   {
     title: "Settings",
     href: "/dashboard/settings",
-    icon: SettingsIcon,
+    icon: ({ className }: { className?: string }): React.ReactNode => (
+      <SettingsIcon className={className ?? "w-5 h-5 shrink-0"} />
+    ),
   },
 ];
 
@@ -81,19 +93,17 @@ export const Sidebar: React.FC = () => {
         id="mobile-backdrop"
         onClick={closeMobile}
         aria-hidden={!isMobileOpen}
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 ${
-          isMobileOpen
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 ${isMobileOpen
+          ? "opacity-100 pointer-events-auto"
+          : "opacity-0 pointer-events-none"
+          }`}
       />
 
       {/* SIDEBAR ASIDE */}
       <aside
         id="sidebar"
-        className={`fixed lg:sticky top-0 left-0 h-screen bg-white border-r border-[#e0f0ed] flex flex-col justify-between shrink-0 z-50 transition-all duration-300 ease-in-out no-scrollbar overflow-y-auto ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 ${isCollapsed ? "lg:w-20" : "lg:w-64"} w-64`}
+        className={`fixed lg:sticky top-0 left-0 h-screen bg-white border-r border-[#e0f0ed] flex flex-col justify-between shrink-0 z-50 transition-all duration-300 ease-in-out no-scrollbar overflow-y-auto ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          } lg:translate-x-0 ${isCollapsed ? "lg:w-20" : "lg:w-64"} w-64`}
       >
         <div className={isCollapsed ? "p-3 lg:p-3" : "p-6"}>
           {/* Logo Header & Mobile Close Button */}
@@ -131,26 +141,22 @@ export const Sidebar: React.FC = () => {
           <nav aria-label="Sidebar Navigation" className="mt-5 space-y-1">
             {NAV_ITEMS.map((item: SidebarNavItem) => {
               const active: boolean = isItemActive(item.href);
-              const ItemIcon = item.icon;
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   title={isCollapsed ? item.title : undefined}
-                  className={`flex items-center ${
-                    isCollapsed ? "lg:justify-center px-4 lg:px-2" : "gap-3.5 px-4"
-                  } py-2.5 rounded-xl font-medium transition-colors text-sm ${
-                    active
+                  className={`flex items-center ${isCollapsed ? "lg:justify-center px-4 lg:px-2" : "gap-3.5 px-4"
+                    } py-2.5 rounded-xl font-medium transition-colors text-sm ${active
                       ? "bg-[#008272] text-white shadow-sm shadow-teal-700/20"
                       : "text-slate-600 hover:text-[#008272] hover:bg-teal-50/60"
-                  }`}
-                >
-                  <ItemIcon
-                    className={`w-5 h-5 shrink-0 ${
-                      active ? "text-white" : "text-slate-400"
                     }`}
-                  />
+                >
+                  {item.icon({
+                    className: `w-5 h-5 shrink-0 ${active ? "text-white" : "text-slate-400"
+                      }`,
+                  })}
                   <span className={isCollapsed ? "lg:hidden" : ""}>
                     {item.title}
                   </span>
@@ -163,9 +169,8 @@ export const Sidebar: React.FC = () => {
               type="button"
               onClick={handleLogout}
               title={isCollapsed ? "Logout" : undefined}
-              className={`w-full flex items-center ${
-                isCollapsed ? "lg:justify-center px-4 lg:px-2" : "gap-3.5 px-4"
-              } py-2.5 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50/60 font-medium transition-colors text-sm cursor-pointer`}
+              className={`w-full flex items-center ${isCollapsed ? "lg:justify-center px-4 lg:px-2" : "gap-3.5 px-4"
+                } py-2.5 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50/60 font-medium transition-colors text-sm cursor-pointer`}
             >
               <LogoutIcon className="w-5 h-5 shrink-0 text-slate-400 hover:text-rose-600" />
               <span className={isCollapsed ? "lg:hidden" : ""}>
@@ -177,9 +182,8 @@ export const Sidebar: React.FC = () => {
 
         {/* Bottom Illustration & Copyright */}
         <div
-          className={`relative overflow-hidden pt-2 shrink-0 ${
-            isCollapsed ? "lg:hidden" : ""
-          }`}
+          className={`relative overflow-hidden pt-2 shrink-0 ${isCollapsed ? "lg:hidden" : ""
+            }`}
         >
           <div className="px-4 opacity-80">
             <svg
