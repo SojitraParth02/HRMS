@@ -1,7 +1,7 @@
 "use client";
 
 import React, { ElementType } from "react";
-import { SvgIconProps } from "@mui/material";
+import type { SvgIconProps } from "@mui/material";
 
 // Material UI Icons
 import Lock from "@mui/icons-material/Lock";
