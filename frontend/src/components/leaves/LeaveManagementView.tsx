@@ -9,7 +9,7 @@ import {
   useAllLeavesQuery,
   useReviewLeaveMutation,
 } from "../../hooks/queries/useLeaves";
-import { LeaveRecord, LeaveStatus } from "../../types/leave.types";
+import { LeaveRecord, LeaveStatus, LeaveBalanceData } from "../../types/leave.types";
 import { ApplyLeaveModal } from "./ApplyLeaveModal";
 import {
   CalendarIcon,
@@ -23,13 +23,23 @@ import {
   SettingsIcon,
 } from "../icons";
 
-export const LeaveManagementView: React.FC = () => {
+export interface LeaveManagementViewProps {
+  initialBalanceData?: LeaveBalanceData;
+  isLoading?: boolean;
+}
+
+export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
+  initialBalanceData,
+  isLoading: propsIsLoading,
+}) => {
   const currentUser = useAppSelector((state) => state.auth.user);
   const isPrivileged =
     currentUser?.role === "HR" || currentUser?.role === "ADMIN";
 
-  const { data: balanceData, isLoading: isBalanceLoading } =
+  const { data: queryBalanceData, isLoading: queryIsBalanceLoading } =
     useLeaveBalanceQuery();
+  const balanceData = initialBalanceData ?? queryBalanceData;
+  const isBalanceLoading = propsIsLoading ?? queryIsBalanceLoading;
   const { data: myLeavesData } = useMyLeavesQuery(1, 30);
   const { data: allLeavesData, isLoading: isAllLeavesLoading } =
     useAllLeavesQuery(

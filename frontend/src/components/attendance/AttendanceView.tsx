@@ -16,6 +16,7 @@ import {
   AttendanceRecord,
   AttendanceStatus,
   AttendanceCorrectionRecord,
+  TodayAttendanceData,
 } from "../../types/attendance.types";
 import { CorrectionModal } from "./CorrectionModal";
 import { BiometricImportModal } from "./BiometricImportModal";
@@ -58,7 +59,15 @@ const formatLateDuration = (minutes?: number): string => {
   return `${hoursDecimal} hr${hoursDecimal === 1 ? "" : "s"}`;
 };
 
-export const AttendanceView: React.FC = () => {
+export interface AttendanceViewProps {
+  initialTodayData?: TodayAttendanceData;
+  isLoading?: boolean;
+}
+
+export const AttendanceView: React.FC<AttendanceViewProps> = ({
+  initialTodayData,
+  isLoading: propsIsLoading,
+}) => {
   const currentUser = useAppSelector((state) => state.auth.user);
   const isPrivileged =
     currentUser?.role === "HR" || currentUser?.role === "ADMIN";
@@ -93,8 +102,10 @@ export const AttendanceView: React.FC = () => {
   }, []);
 
   // Attendance Queries & Mutations
-  const { data: todayData, isLoading: isTodayLoading } =
+  const { data: queryTodayData, isLoading: queryIsTodayLoading } =
     useTodayAttendanceQuery();
+  const todayData = initialTodayData ?? queryTodayData;
+  const isTodayLoading = propsIsLoading ?? queryIsTodayLoading;
   const { data: historyData } = useMyAttendanceHistoryQuery(1, 30);
   const { data: correctionsData } = useCorrectionsQuery(
     "PENDING",

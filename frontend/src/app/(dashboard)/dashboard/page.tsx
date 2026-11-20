@@ -1,5 +1,4 @@
-"use client";
-
+import type { Metadata } from "next";
 import React from "react";
 import Link from "next/link";
 import {
@@ -13,7 +12,12 @@ import {
   ReceiptLongIcon,
   CheckIcon,
   ArrowForwardIcon,
-} from "../../components/icons";
+} from "../../../components/icons";
+
+export const metadata: Metadata = {
+  title: "Dashboard | HRMS",
+  description: "Executive workforce overview, employee attendance, and operational metrics",
+};
 
 export default function DashboardPage() {
   return (
@@ -114,7 +118,7 @@ export default function DashboardPage() {
             </div>
             <Link
               className="text-[11px] font-semibold text-teal-700 hover:underline inline-flex items-center gap-1"
-              href="/dashboard/attendance"
+              href="/attendance"
             >
               <span>View Details</span>
               <ArrowForwardIcon className="w-3.5 h-3.5" />

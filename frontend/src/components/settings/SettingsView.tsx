@@ -6,6 +6,7 @@ import {
   useCompanySettingsQuery,
   useUpdateCompanySettingsMutation,
 } from "../../hooks/queries/useSettings";
+import { CompanySettings } from "../../types/settings.types";
 import {
   SettingsIcon,
   AccessTimeIcon,
@@ -17,12 +18,22 @@ import {
   CheckIcon,
 } from "../icons";
 
-export const SettingsView: React.FC = () => {
+export interface SettingsViewProps {
+  initialSettings?: CompanySettings;
+  isLoading?: boolean;
+}
+
+export const SettingsView: React.FC<SettingsViewProps> = ({
+  initialSettings,
+  isLoading: propsIsLoading,
+}) => {
   const currentUser = useAppSelector((state) => state.auth.user);
   const isPrivileged =
     currentUser?.role === "HR" || currentUser?.role === "ADMIN";
 
-  const { data: settings, isLoading, isError } = useCompanySettingsQuery();
+  const { data: querySettings, isLoading: queryIsLoading, isError } = useCompanySettingsQuery();
+  const settings = initialSettings ?? querySettings;
+  const isLoading = propsIsLoading ?? queryIsLoading;
   const updateMutation = useUpdateCompanySettingsMutation();
 
   // Form State

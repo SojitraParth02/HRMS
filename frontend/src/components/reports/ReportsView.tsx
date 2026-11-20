@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAppSelector } from "../../hooks/redux";
 import { AttendanceReportTab } from "./AttendanceReportTab";
 import { PayrollReportTab } from "./PayrollReportTab";
 import { OvertimeReportTab } from "./OvertimeReportTab";
@@ -8,12 +9,36 @@ import {
   CalendarIcon,
   PaymentsIcon,
   AccessTimeIcon,
+  WarningIcon,
 } from "../icons";
 
 type ReportTabType = "attendance" | "payroll" | "overtime";
 
 export const ReportsView: React.FC = () => {
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const isPrivileged =
+    currentUser?.role === "ADMIN" || currentUser?.role === "HR";
+
   const [activeTab, setActiveTab] = useState<ReportTabType>("attendance");
+
+  if (!isPrivileged) {
+    return (
+      <div className="px-4 sm:px-8 py-12 flex-1 flex flex-col items-center justify-center text-center space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+          <WarningIcon className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-lg font-black text-slate-800">
+            Access Restricted
+          </h2>
+          <p className="text-xs text-slate-500 max-w-sm">
+            You do not have permission to access analytics and reports. Please
+            contact an administrator if you believe this is an error.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 sm:px-8 py-6 flex-1 space-y-6">

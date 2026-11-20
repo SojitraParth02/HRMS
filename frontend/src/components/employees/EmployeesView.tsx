@@ -43,8 +43,18 @@ const DEPARTMENTS: string[] = [
 
 const ROLES: string[] = ["All Roles", "ADMIN", "HR", "EMPLOYEE"];
 
-export const EmployeesView: React.FC = () => {
-  const { data: employees = [], isLoading, isError, refetch } = useEmployeesQuery();
+export interface EmployeesViewProps {
+  initialEmployees?: Employee[];
+  isLoading?: boolean;
+}
+
+export const EmployeesView: React.FC<EmployeesViewProps> = ({
+  initialEmployees,
+  isLoading: propsIsLoading,
+}) => {
+  const { data: queryEmployees = [], isLoading: queryIsLoading, isError, refetch } = useEmployeesQuery();
+  const employees = initialEmployees ?? queryEmployees;
+  const isLoading = propsIsLoading ?? queryIsLoading;
 
   const currentUser: User | null = useAppSelector((state) => state.auth.user);
   const currentUserRole: UserRole = currentUser?.role ?? "EMPLOYEE";

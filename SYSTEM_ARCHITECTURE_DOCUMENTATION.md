@@ -94,19 +94,19 @@ flowchart TB
         subgraph RouteTree["Next.js App Router Structure"]
             RootLayout["RootLayout (src/app/layout.tsx)\n(Hydration Defense Script + CSS)"]
             RootPage["RootPage (src/app/page.tsx)\n(Client Auth Redirector)"]
-            LoginPage["LoginPage (src/app/login/page.tsx)\n(LoginForm Presentation)"]
+            LoginPage["LoginPage (src/app/login/page.tsx)\n(Server Component + Metadata)"]
             
-            subgraph DashboardShell["Dashboard Layout (src/app/dashboard/layout.tsx)"]
+            subgraph DashboardShell["Shared Route Group Layout (src/app/(dashboard)/layout.tsx)"]
                 SidebarContext["SidebarProvider (src/context/SidebarContext.tsx)"]
                 Sidebar["Sidebar Component (src/components/dashboard/Sidebar.tsx)"]
                 Topbar["Topbar Component (src/components/dashboard/Topbar.tsx)\n(Notifications Dropdown & Real-Time Toasts)"]
-                DashboardPage["Dashboard Overview (src/app/dashboard/page.tsx)"]
-                EmployeesPage["Employees Directory (src/app/employees/page.tsx)"]
-                AttendancePage["Attendance Tracker (src/app/attendance/page.tsx)"]
-                LeavesPage["Leave Management (src/app/leaves/page.tsx)"]
-                PayrollPage["Payroll Engine (src/app/payroll/page.tsx)"]
-                ReportsPage["Workforce Reports (src/app/reports/page.tsx)"]
-                SettingsPage["Shift & Leave Settings (src/app/settings/page.tsx)"]
+                DashboardPage["Dashboard Overview (src/app/(dashboard)/dashboard/page.tsx)"]
+                EmployeesPage["Employees Directory (src/app/(dashboard)/employees/page.tsx)"]
+                AttendancePage["Attendance Tracker (src/app/(dashboard)/attendance/page.tsx)"]
+                LeavesPage["Leave Management (src/app/(dashboard)/leaves/page.tsx)"]
+                PayrollPage["Payroll Engine (src/app/(dashboard)/payroll/page.tsx)"]
+                ReportsPage["Workforce Reports (src/app/(dashboard)/reports/page.tsx)"]
+                SettingsPage["Shift & Leave Settings (src/app/(dashboard)/settings/page.tsx)"]
             end
         end
 
@@ -669,15 +669,16 @@ Implemented in [src/components/dashboard/Topbar.tsx](file:///d:/HRMS/frontend/sr
   - Icon centralized with `LogoutIcon` from `src/components/icons.tsx`.
 
 ### 8.6 Query Caching Policy & Route Transition Optimization
-Implemented in [src/providers/AppProviders.tsx](file:///d:/HRMS/frontend/src/providers/AppProviders.tsx), [src/app/dashboard/layout.tsx](file:///d:/HRMS/frontend/src/app/dashboard/layout.tsx), and [src/components/auth/LoginForm.tsx](file:///d:/HRMS/frontend/src/components/auth/LoginForm.tsx):
+Implemented in [src/providers/AppProviders.tsx](file:///d:/HRMS/frontend/src/providers/AppProviders.tsx), [src/app/(dashboard)/layout.tsx](file:///d:/HRMS/frontend/src/app/(dashboard)/layout.tsx), and [src/components/auth/LoginForm.tsx](file:///d:/HRMS/frontend/src/components/auth/LoginForm.tsx):
 1. **Cache Retention & Stale Timing**:
    - `staleTime`: Explicitly configured to **5 minutes** (`5 * 60 * 1000`). Data fetched within 5 minutes is considered fresh and served instantly with zero background network roundtrips.
    - `gcTime` (Garbage Collection / Cache Time): Configured to **10 minutes** (`10 * 60 * 1000`). Unused query cache data is retained in memory for 10 minutes before garbage collection.
    - `refetchOnWindowFocus`: Explicitly set to `false` to avoid jarring, unexpected network fetches when switching browser tabs.
    - Reactive Revalidation: Mutations (`useCreateEmployeeMutation`) explicitly invalidate target queries (`["employees"]`) to ensure the table displays updated data instantly upon record addition.
-2. **Instant Route Prefetching**:
-   - `LoginForm.tsx` prefetches `/dashboard` and `/dashboard/employees` upon mount, ensuring that submitting login credentials transitions to the dashboard without JIT compilation delays.
-   - `Topbar.tsx`, `Sidebar.tsx`, and `DashboardLayout.tsx` prefetch `/login` on mount, ensuring that triggering a logout immediately swaps to the login screen without stall or cold-compilation delays.
+2. **Instant Route Prefetching & Persistent Layout**:
+   - Next.js Route Group `src/app/(dashboard)/` hosts a persistent shared `layout.tsx` that stays mounted across all dashboard transitions without DOM destruction or unmounting.
+   - All 7 route `page.tsx` files are lightweight Server Components exporting descriptive `Metadata` (`title`, `description`).
+   - `Topbar.tsx` and `Sidebar.tsx` prefetch `/login` on mount, ensuring that triggering a logout immediately swaps to the login screen without stall or cold-compilation delays.
    - `queryClient.clear()` is executed immediately on logout to purge active in-memory cache and prevent unauthorized state leaks.
 
 ### 8.7 Granular RBAC Actions & Deactivation Dialog
@@ -923,19 +924,19 @@ The system allows HR and Administrator roles to configure the company-wide shift
   - `PUT /api/settings`: Restricted to `ADMIN` and `HR` roles (`authorizeRoles("ADMIN", "HR")`).
 
 ### 14.3 Frontend Top-Level Modular Routing & Settings Integration
-All functional modules are structured as clean, first-class top-level routes directly in `frontend/src/app/`, wrapped in `<DashboardLayout>` to preserve persistent responsive sidebar, topbar, and cryptographic session protection:
+All functional modules are structured as clean, first-class top-level routes organized under the persistent Route Group `frontend/src/app/(dashboard)/`. The shared `layout.tsx` preserves responsive sidebar, topbar, and cryptographic session protection without re-mounting between route transitions:
 
 1. **Top-Level Route Map (`Sidebar.tsx`)**:
-   - **Dashboard**: `/dashboard` (`frontend/src/app/dashboard/page.tsx`)
-   - **Employees**: `/employees` (`frontend/src/app/employees/page.tsx`)
-   - **Attendance**: `/attendance` (`frontend/src/app/attendance/page.tsx`)
-   - **Leaves**: `/leaves` (`frontend/src/app/leaves/page.tsx`)
-   - **Payroll**: `/payroll` (`frontend/src/app/payroll/page.tsx`)
-   - **Reports**: `/reports` (`frontend/src/app/reports/page.tsx`)
-   - **Settings**: `/settings` (`frontend/src/app/settings/page.tsx`)
+   - **Dashboard**: `/dashboard` (`frontend/src/app/(dashboard)/dashboard/page.tsx`) - Server Component with `Metadata`
+   - **Employees**: `/employees` (`frontend/src/app/(dashboard)/employees/page.tsx`) - Server Component with `Metadata`
+   - **Attendance**: `/attendance` (`frontend/src/app/(dashboard)/attendance/page.tsx`) - Server Component with `Metadata`
+   - **Leaves**: `/leaves` (`frontend/src/app/(dashboard)/leaves/page.tsx`) - Server Component with `Metadata`
+   - **Payroll**: `/payroll` (`frontend/src/app/(dashboard)/payroll/page.tsx`) - Server Component with `Metadata`
+   - **Reports**: `/reports` (`frontend/src/app/(dashboard)/reports/page.tsx`) - Server Component with `Metadata`
+   - **Settings**: `/settings` (`frontend/src/app/(dashboard)/settings/page.tsx`) - Server Component with `Metadata`
 
 2. **Dedicated Settings Route (`/settings`)**:
-   - `frontend/src/app/settings/page.tsx` wrapped in `DashboardLayout`.
+   - `frontend/src/app/(dashboard)/settings/page.tsx` renders `<SettingsView />`.
    - `SettingsView.tsx`: Office Shift & Grace Window Card, Lunch Break & Hours Card, Leave Policy & Paid Quota Card.
    - Role-guarded: HR and Admin have full editing capabilities with Reset and Save actions; Employees have read-only view.
 
@@ -1421,9 +1422,9 @@ The following items are genuinely missing or partial in the codebase and represe
   - Configured with `staleTime: 60 * 1000` and `placeholderData: keepPreviousData` for smooth filtering.
 
 ### 18.6 Enterprise Reports Frontend UI/UX Architecture (`/reports`)
-- **Route Shell & Access Guard (`frontend/src/app/reports/page.tsx`)**:
-  - Encapsulated within `DashboardLayout`.
-  - Enforces client-side role guarding: renders `<ReportsView />` if `currentUser.role === "ADMIN" || currentUser.role === "HR"`, otherwise displays an interactive Access Restricted warning banner.
+- **Route Shell & Access Guard (`frontend/src/app/(dashboard)/reports/page.tsx`)**:
+  - Registered as a clean Server Component with static `Metadata` export.
+  - Enforces client-side role guarding directly inside `<ReportsView />`: renders the report dashboard if `currentUser.role === "ADMIN" || currentUser.role === "HR"`, otherwise displays an interactive Access Restricted warning banner.
 - **Main Coordinator View (`frontend/src/components/reports/ReportsView.tsx`)**:
   - Modern pill navigation tab switcher supporting 3 operational views: `Attendance Report`, `Payroll Expenditure`, and `Overtime Utilization`.
 - **Reusable Report UI Components (`frontend/src/components/reports/`)**:
