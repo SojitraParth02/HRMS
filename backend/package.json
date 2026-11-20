@@ -20,7 +20,11 @@
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.12.2"
+    "libphonenumber-js": "^1.13.17",
+    "mongoose": "^9.12.2",
+    "node-cron": "^4.6.0",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -28,6 +32,7 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.6",
+    "@types/node-cron": "^3.0.11",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   }

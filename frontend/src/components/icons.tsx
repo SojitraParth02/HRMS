@@ -28,6 +28,17 @@ import AccessTime from "@mui/icons-material/AccessTime";
 import ReceiptLong from "@mui/icons-material/ReceiptLong";
 import Check from "@mui/icons-material/Check";
 import InfoOutlined from "@mui/icons-material/InfoOutlined";
+import Add from "@mui/icons-material/Add";
+import Person from "@mui/icons-material/Person";
+import Phone from "@mui/icons-material/Phone";
+import Work from "@mui/icons-material/Work";
+import FilterList from "@mui/icons-material/FilterList";
+import Badge from "@mui/icons-material/Badge";
+import Block from "@mui/icons-material/Block";
+import RestartAlt from "@mui/icons-material/RestartAlt";
+import WarningAmber from "@mui/icons-material/WarningAmber";
+import Edit from "@mui/icons-material/Edit";
+import EventAvailable from "@mui/icons-material/EventAvailable";
 
 /**
  * Higher-Order Component (HOC) to scale all icons by 1.25em
@@ -70,7 +81,8 @@ export const GroupIcon: React.FC<SvgIconProps> = withCustomSize(Group);
 export const EmployeesIcon: React.FC<SvgIconProps> = withCustomSize(Group);
 export const CalendarTodayIcon: React.FC<SvgIconProps> = withCustomSize(CalendarToday);
 export const CalendarIcon: React.FC<SvgIconProps> = withCustomSize(CalendarToday);
-export const AttendanceIcon: React.FC<SvgIconProps> = withCustomSize(CalendarToday);
+export const AttendanceIcon: React.FC<SvgIconProps> = withCustomSize(AccessTime);
+export const LeavesIcon: React.FC<SvgIconProps> = withCustomSize(EventAvailable);
 export const PaymentsIcon: React.FC<SvgIconProps> = withCustomSize(Payments);
 export const PayrollIcon: React.FC<SvgIconProps> = withCustomSize(Payments);
 export const BarChartIcon: React.FC<SvgIconProps> = withCustomSize(BarChart);
@@ -88,3 +100,15 @@ export const CancelIcon: React.FC<SvgIconProps> = withCustomSize(Cancel);
 export const AccessTimeIcon: React.FC<SvgIconProps> = withCustomSize(AccessTime);
 export const ReceiptLongIcon: React.FC<SvgIconProps> = withCustomSize(ReceiptLong);
 export const CheckIcon: React.FC<SvgIconProps> = withCustomSize(Check);
+
+// Employee Management & Action Icons
+export const AddIcon: React.FC<SvgIconProps> = withCustomSize(Add);
+export const PersonIcon: React.FC<SvgIconProps> = withCustomSize(Person);
+export const PhoneIcon: React.FC<SvgIconProps> = withCustomSize(Phone);
+export const WorkIcon: React.FC<SvgIconProps> = withCustomSize(Work);
+export const FilterListIcon: React.FC<SvgIconProps> = withCustomSize(FilterList);
+export const BadgeIcon: React.FC<SvgIconProps> = withCustomSize(Badge);
+export const BlockIcon: React.FC<SvgIconProps> = withCustomSize(Block);
+export const RestartAltIcon: React.FC<SvgIconProps> = withCustomSize(RestartAlt);
+export const WarningIcon: React.FC<SvgIconProps> = withCustomSize(WarningAmber);
+export const EditIcon: React.FC<SvgIconProps> = withCustomSize(Edit);

@@ -13,7 +13,7 @@ export class AdminRepository {
     return AdminModel.findByIdAndUpdate(
       id,
       { sessionId },
-      { new: true }
+      { returnDocument: "after" }
     ).exec();
   }
 }

@@ -1,8 +1,10 @@
+import { UserRole } from "./employee.types";
+
 export interface IAdminUserResponse {
   id: string;
   username: string;
   email: string;
-  role: "ADMIN";
+  role: UserRole;
   sessionId: string;
 }
 
@@ -15,7 +17,7 @@ export interface IJwtPayload {
   id: string;
   email: string;
   username: string;
-  role: "ADMIN";
+  role: UserRole;
   sessionId: string;
 }
 

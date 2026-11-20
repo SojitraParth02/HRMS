@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import { connectDatabase } from "./config/database";
 import { AdminModel, IUserDocument } from "./models/user.model";
+import { seedDefaultCompanySettings } from "./utils/seedSettings";
 
 dotenv.config();
 
@@ -35,6 +36,9 @@ const seedAdmin = async (): Promise<void> => {
       console.log(`  Username: ${adminUsername}`);
       console.log(`  Password: ${defaultPassword}`);
     }
+
+    // Seed Default Company Settings
+    await seedDefaultCompanySettings();
 
     await mongoose.disconnect();
     console.log("Database disconnected cleanly.");

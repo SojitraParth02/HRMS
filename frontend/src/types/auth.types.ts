@@ -1,8 +1,10 @@
+import { UserRole } from "./employee.types";
+
 export interface User {
   id: string;
   email: string;
   username: string;
-  role: string;
+  role: UserRole;
 }
 
 export interface AuthState {

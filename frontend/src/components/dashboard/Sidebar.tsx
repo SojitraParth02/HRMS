@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSidebarContext } from "../../context/SidebarContext";
 import { useAppDispatch } from "../../hooks/redux";
 import { logout } from "../../store/slices/authSlice";
@@ -12,6 +13,7 @@ import {
   DashboardIcon,
   EmployeesIcon,
   AttendanceIcon,
+  LeavesIcon,
   PayrollIcon,
   ReportsIcon,
   SettingsIcon,
@@ -32,35 +34,42 @@ const NAV_ITEMS: SidebarNavItem[] = [
   },
   {
     title: "Employees",
-    href: "/dashboard/employees",
+    href: "/employees",
     icon: ({ className }: { className?: string }): React.ReactNode => (
       <EmployeesIcon className={className ?? "w-5 h-5 shrink-0"} />
     ),
   },
   {
     title: "Attendance",
-    href: "/dashboard/attendance",
+    href: "/attendance",
     icon: ({ className }: { className?: string }): React.ReactNode => (
       <AttendanceIcon className={className ?? "w-5 h-5 shrink-0"} />
     ),
   },
   {
+    title: "Leaves",
+    href: "/leaves",
+    icon: ({ className }: { className?: string }): React.ReactNode => (
+      <LeavesIcon className={className ?? "w-5 h-5 shrink-0"} />
+    ),
+  },
+  {
     title: "Payroll",
-    href: "/dashboard/payroll",
+    href: "/payroll",
     icon: ({ className }: { className?: string }): React.ReactNode => (
       <PayrollIcon className={className ?? "w-5 h-5 shrink-0"} />
     ),
   },
   {
     title: "Reports",
-    href: "/dashboard/reports",
+    href: "/reports",
     icon: ({ className }: { className?: string }): React.ReactNode => (
       <ReportsIcon className={className ?? "w-5 h-5 shrink-0"} />
     ),
   },
   {
     title: "Settings",
-    href: "/dashboard/settings",
+    href: "/settings",
     icon: ({ className }: { className?: string }): React.ReactNode => (
       <SettingsIcon className={className ?? "w-5 h-5 shrink-0"} />
     ),
@@ -71,6 +80,7 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const queryClient = useQueryClient();
   const { isCollapsed, isMobileOpen, closeMobile } = useSidebarContext();
 
   const isItemActive = (href: string): boolean => {
@@ -81,9 +91,10 @@ export const Sidebar: React.FC = () => {
   };
 
   const handleLogout = (): void => {
+    queryClient.clear();
     dispatch(logout());
     closeMobile();
-    router.push("/login");
+    router.replace("/login");
   };
 
   return (
@@ -146,6 +157,7 @@ export const Sidebar: React.FC = () => {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={closeMobile}
                   title={isCollapsed ? item.title : undefined}
                   className={`flex items-center ${isCollapsed ? "lg:justify-center px-4 lg:px-2" : "gap-3.5 px-4"
                     } py-2.5 rounded-xl font-medium transition-colors text-sm ${active

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { authService, AuthService } from "../services/auth.service";
-import { AuthenticationError } from "../utils/errors";
+import { AuthenticationError, ForbiddenError } from "../utils/errors";
 import { ILoginRequestBody, ILoginResponse } from "../types/auth.types";
 
 export class AuthController {
@@ -32,6 +32,14 @@ export class AuthController {
     } catch (error) {
       if (error instanceof AuthenticationError) {
         res.status(401).json({
+          status: "fail",
+          message: error.message,
+        });
+        return;
+      }
+
+      if (error instanceof ForbiddenError) {
+        res.status(403).json({
           status: "fail",
           message: error.message,
         });

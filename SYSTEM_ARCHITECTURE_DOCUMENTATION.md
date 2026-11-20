@@ -3,12 +3,12 @@
 
 ---
 
-- **Document Version**: `0.3.0-baseline`
+- **Document Version**: `0.19.0-module4-verified`
 - **Living Status**: `Active Baseline Specification`
 - **Operating Environments**: Cross-Platform Desktop (Windows / macOS via Chromium/Electron Runtime), Web Client
 - **Author**: Principal Software Architect & Full-Stack Core Team
 - **Root Directory**: `d:\HRMS`
-- **Last Audited & Verified**: November 19, 2026
+- **Last Audited & Verified**: November 20, 2026
 
 ---
 
@@ -26,6 +26,14 @@ The codebase currently implements the full foundation and baseline operational c
 3. **Frontend Application Shell**: Next.js 15 App Router architecture with Redux Toolkit client state, TanStack React Query server caching, and centralized Material UI icons.
 4. **Authentication Flow & Error UX**: Viewport-locked, responsive `LoginForm` with interactive password toggle, client-side validation, error banners, and automatic routing guards.
 5. **Dashboard Layout Shell**: Responsive `SidebarProvider` context, sticky collapsible `Sidebar`, sticky glassmorphic `Topbar` with dynamic user initials, and the primary executive overview dashboard (`/dashboard`).
+6. **Module 2 Core Foundation**: Shared employee domain types, symmetric Zod validation schemas (`createEmployeeSchema`), strict regex specifications (`PASSWORD_REGEX`, `E164_PHONE_REGEX`), and expanded multi-role Mongoose `User` model (`ADMIN`, `HR`, `EMPLOYEE`).
+7. **Module 2 4-Tier Backend & RBAC Engine**: Reusable `validateBody` Zod middleware, role-based authorization middleware (`authorizeRoles`), `EmployeeRepository`, `EmployeeService` enforcing strict HR-creation barriers and duplicate checking, `EmployeeController`, and protected `/api/employees` endpoints.
+8. **Module 2 Full-Stack Connection & Workforce UI**: Dedicated employee Axios API service (`employee.service.ts`), reactive TanStack Query hooks (`useEmployeesQuery`, `useCreateEmployeeMutation`), `AddEmployeeModal.tsx` with real-time inline HR validation, and dynamic, responsive workforce directory view (`EmployeesView.tsx`) across `/employees` and `/dashboard/employees`.
+9. **RBAC, Soft Delete & Automated 30-Day Cleanup**: Strict RBAC permissions preventing HR from modifying HR/Admin accounts, self-preservation barriers preventing Admin self-deactivation, soft delete workflow (`status: INACTIVE`, `deactivatedAt: Date`, active `sessionId` termination), reactivation workflow, and midnight background cron job (`backend/src/cron/employeeCleanup.cron.ts`) automatically hard-deleting records older than 30 days.
+10. **Module 3 Attendance Tracking & Shift Configuration**: Real-time check-in/out, live work hours computation, dynamic late calculation, attendance correction workflow, and department-wide attendance monitoring.
+11. **Module 3 Leave Management Engine**: Annual quota tracking, paid vs unpaid (LOP) balance accounting, leave application and approval workflow with real-time Socket.io room events.
+12. **Module 4 Payroll Calculation Engine & Financial Tier**: Statutory 26-day divisor calculation engine, overtime requests with 1.5x rate multiplier, salary advance management, draft payroll run, manual adjustments, and finalized audit lock.
+13. **Module 4 Full-Stack Frontend UI/UX Architecture**: Dedicated top-level `/payroll` route, role-based pill navigation tabs, interactive draft payroll table with adjustment modals, overtime approvals queue, salary advance management, employee self-service overtime submission, and printable official payslip statements.
 
 ---
 
@@ -44,13 +52,21 @@ The technology stack is strictly based on the configured dependencies in `backen
 |                                | TypeScript                     | ^7.0.2 (Strict Type Safety)           |
 |                                | tsx                            | ^4.23.15 (TypeScript Execution Watch) |
 | **Backend Database Driver**    | Mongoose                       | ^9.12.2 (ODM & Schema Enforcement)    |
+| **Validation & Schema Engine**  | Zod                            | ^4.6.7 (End-to-End Schema Validation)  |
+|                                | libphonenumber-js              | ^1.13.17 (Country Phone Validation)   |
 | **Backend Cryptography & Auth**| bcrypt                         | ^6.0.0 (Password Hashing - 10 Rounds) |
 |                                | jsonwebtoken                   | ^9.0.3 (Signed Bearer JWT Tokens)     |
 |                                | cors                           | ^2.8.6 (Cross-Origin Policy)          |
 |                                | dotenv                         | ^18.0.10 (Environment Management)     |
+| **Background Cron Scheduler**   | node-cron                      | ^4.0.3 (Midnight Automated Purge Job)  |
+| **Real-Time WebSocket Gateway** | socket.io                      | ^4.8.1 (Bi-directional Event Gateway)  |
 +--------------------------------+--------------------------------+---------------------------------------+
 | **Frontend Framework**         | Next.js                        | 15.5.29 (App Router, Server Routing)  |
 |                                | React & React-DOM              | 19.1.0 (Concurrent UI Components)     |
+| **Real-Time WebSocket Client**  | socket.io-client               | ^4.8.1 (Persistent Socket Connection) |
+| **Validation & Schema Engine**  | Zod                            | ^4.6.7 (Client Form Schema Validation) |
+|                                | libphonenumber-js              | ^1.13.17 (Country Phone Validation)   |
+| **International Phone UI**     | react-international-phone      | ^4.8.0 (Country Code Selector Input)  |
 | **Frontend Global State**      | @reduxjs/toolkit               | ^2.15.0 (Auth Session & Client State) |
 |                                | react-redux                    | ^9.3.1 (React Hooks for Redux Store)  |
 | **Server State & Caching**     | @tanstack/react-query          | ^5.108.0 (API Mutations & 5m Caching) |
@@ -95,12 +111,20 @@ flowchart TB
         direction TB
         Server["Server Initialization (src/server.ts)\n(CORS, express.json, Port 5000)"]
         
-        subgraph LayeredFlow["4-Tier Isolation Flow"]
+        subgraph AuthFlow["Auth Domain 4-Tier Flow"]
             AuthRouter["Auth Router (src/routes/auth.routes.ts)"]
-            AuthMiddleware["Auth Middleware (src/middleware/auth.middleware.ts)\n(verifyAdminToken & Session Check)"]
+            AuthMiddleware["Auth Middleware (src/middleware/auth.middleware.ts)\n(verifyToken & Session Check)"]
             AuthController["Auth Controller (src/controllers/auth.controller.ts)"]
             AuthService["Auth Service (src/services/auth.service.ts)\n(bcrypt.compare, sessionId generation, jwt.sign)"]
             AdminRepository["Admin Repository (src/repositories/admin.repository.ts)\n(Mongoose Queries: findOne, findByIdAndUpdate)"]
+        end
+
+        subgraph EmployeeFlow["Employee Domain 4-Tier Flow"]
+            EmployeeRouter["Employee Router (src/routes/employee.routes.ts)"]
+            RBACMiddleware["RBAC & Validation Middleware\n(verifyToken, authorizeRoles, validateBody)"]
+            EmployeeController["Employee Controller (src/controllers/employee.controller.ts)"]
+            EmployeeService["Employee Service (src/services/employee.service.ts)\n(Conflict check, HR barriers, bcrypt.hash)"]
+            EmployeeRepository["Employee Repository (src/repositories/employee.repository.ts)\n(Mongoose Queries: create, findOne, find)"]
         end
     end
 
@@ -118,55 +142,64 @@ flowchart TB
     AuthController --> AuthService
     AuthService --> AdminRepository
     AdminRepository -- "Mongoose Driver / Wire Protocol" --> MongoDB
+
+    Server --> EmployeeRouter
+    EmployeeRouter --> RBACMiddleware
+    RBACMiddleware --> EmployeeController
+    EmployeeController --> EmployeeService
+    EmployeeService --> EmployeeRepository
+    EmployeeRepository -- "Mongoose Driver / Wire Protocol" --> MongoDB
 ```
 
 ---
 
 ## 4. Unidirectional 4-Tier Backend Layer Isolation
 
-The backend strictly enforces a unidirectional, non-bypassing 4-tier separation:
+The backend strictly enforces a unidirectional, non-bypassing 4-tier separation across all domains:
 
 ```mermaid
 flowchart LR
-    A["HTTP Request\nPOST /api/auth/login"] --> B["Route Layer\nauth.routes.ts"]
-    B --> C["Controller Layer\nauth.controller.ts"]
-    C --> D["Service Layer\nauth.service.ts"]
-    D --> E["Repository Layer\nadmin.repository.ts"]
+    A["HTTP Request\nPOST /api/employees"] --> B["Route Layer\nemployee.routes.ts"]
+    B --> M["Middleware Layer\nverifyToken + authorizeRoles + validateBody"]
+    M --> C["Controller Layer\nemployee.controller.ts"]
+    C --> D["Service Layer\nemployee.service.ts"]
+    D --> E["Repository Layer\nemployee.repository.ts"]
     E --> F["Mongoose Model\nuser.model.ts"]
     F --> G[("MongoDB Collection\n'users'")]
 ```
 
 ### 4.1 Layer Responsibilities & Live Invariants
 
-1. **Route Layer (`backend/src/routes/auth.routes.ts`)**:
-   - Maps endpoints (`/login`, `/me`) to controller methods.
-   - Attaches middleware (`verifyAdminToken`).
-   - Contains zero database or business logic.
-2. **Middleware Layer (`backend/src/middleware/auth.middleware.ts`)**:
-   - Extracts `Authorization: Bearer <token>` from HTTP headers.
-   - Verifies JWT signature against `process.env.JWT_SECRET`.
-   - Validates that decoded payload matches `IJwtPayload`.
-   - Executes session integrity check via `authService.validateAdminSessionService(id, sessionId)` to guarantee single-active-session security.
-3. **Controller Layer (`backend/src/controllers/auth.controller.ts`)**:
-   - Extracts and sanitizes `email` and `password` from `req.body`.
-   - Validates field presence and types.
-   - Calls `authService.loginAdminService(...)`.
-   - Maps responses: `200 OK` on success, `400 Bad Request` on missing fields, `401 Unauthorized` on `AuthenticationError`, `500` on internal exceptions. Never queries Mongoose models.
-4. **Service Layer (`backend/src/services/auth.service.ts`)**:
-   - Coordinates business rules: queries user via repository, verifies password via `bcrypt.compare`, creates random UUID `sessionId`, updates session in repository, and signs JWT.
-   - Enforces session validation: verifies that caller's JWT `sessionId` equals the active database `sessionId`.
-5. **Repository Layer (`backend/src/repositories/admin.repository.ts`)**:
-   - Sole layer authorized to execute Mongoose operations:
-     - `findAdminByEmail(email: string): Promise<IUserDocument | null>`
-     - `findAdminById(id: string): Promise<IUserDocument | null>`
-     - `updateAdminSession(id: string, sessionId: string): Promise<IUserDocument | null>`
+1. **Route Layer (`backend/src/routes/auth.routes.ts`, `backend/src/routes/employee.routes.ts`)**:
+   - Maps endpoints (`/api/auth/login`, `/api/auth/me`, `/api/employees`) to controller methods.
+   - Attaches security middleware pipelines (`verifyToken`, `authorizeRoles`, `validateBody`).
+   - Contains zero database queries or business decision logic.
+2. **Middleware Layer (`backend/src/middleware/auth.middleware.ts`, `backend/src/middleware/validate.middleware.ts`)**:
+   - **`verifyToken`**: Extracts `Authorization: Bearer <token>`, verifies signature with `JWT_SECRET`, checks payload structure, and validates active single-session UUID via `authService.validateUserSessionService(id, sessionId)`.
+   - **`authorizeRoles(...roles)`**: Asserts authenticated caller possesses one of the authorized roles (`ADMIN`, `HR`), emitting `403 Forbidden` if unauthorized.
+   - **`validateBody(schema)`**: Parses incoming `req.body` against Zod schemas (`createEmployeeSchema`), responding with `400 Bad Request` and structured field error arrays on validation failure.
+3. **Controller Layer (`backend/src/controllers/auth.controller.ts`, `backend/src/controllers/employee.controller.ts`)**:
+   - Receives strongly-typed requests, unpacks context (`req.user.id`, `req.user.role`), invokes service orchestrations, and formats HTTP responses (`200 OK`, `201 Created`).
+   - Catches typed domain errors (`ConflictError` $\rightarrow$ 409, `ForbiddenError` $\rightarrow$ 403, `ValidationError` $\rightarrow$ 400). Never interacts with Mongoose directly.
+4. **Service Layer (`backend/src/services/auth.service.ts`, `backend/src/services/employee.service.ts`)**:
+   - Houses core business rules:
+     - Enforces duplicate email checks (emitting `409 Conflict`).
+     - **Strict RBAC Rule**: If `creatorRole === "HR"`, asserts target role is neither `HR` nor `ADMIN`, and designation does not match `/^(hr|admin)/i`, throwing `403 Forbidden` on violation.
+     - Performs salted credential hashing (`bcrypt.hash(password, 10)`).
+     - Maps Mongoose documents into sanitized output types with password omitted.
+5. **Repository Layer (`backend/src/repositories/admin.repository.ts`, `backend/src/repositories/employee.repository.ts`)**:
+   - Sole layer authorized to execute Mongoose ODM operations:
+     - `createEmployee(data: Partial<IUser>): Promise<IUserDocument>`
+     - `findEmployeeByEmail(email: string): Promise<IUserDocument | null>`
+     - `findEmployeeById(id: string): Promise<IUserDocument | null>`
+     - `getAllEmployees(): Promise<IUserDocument[]>` (projection excluding password, sorted by latest first)
 
 ---
 
 ## 5. Data Architecture & Active Database Schema
 
 ### 5.1 Active Entity Model (`users` Collection)
-Currently, exactly one Mongoose model is declared and active in the database:
+Currently, the primary multi-role user and employee entity model is declared and active in the database:
 
 ```mermaid
 erDiagram
@@ -175,8 +208,15 @@ erDiagram
         string username
         string email UK
         string password
-        string role
+        string role "ADMIN | HR | EMPLOYEE"
+        string phone
+        string department
+        string designation
+        number monthlySalary
+        string status "ACTIVE | INACTIVE"
+        ObjectId createdBy FK "Refers to USERS"
         string sessionId
+        date joiningDate
         date createdAt
         date updatedAt
     }
@@ -188,13 +228,42 @@ Defined in [backend/src/models/user.model.ts](file:///d:/HRMS/backend/src/models
 | Field Name | Type | Nullable | Constraints & Indexing | Business Purpose |
 | :--- | :--- | :---: | :--- | :--- |
 | `_id` | `ObjectId` | No | Auto-generated BSON primary key | Unique entity identifier |
-| `username` | `String` | No | `required: true, trim: true` | Display name of the user |
-| `email` | `String` | No | `required: true, unique: true, lowercase: true, trim: true` | Unique login username |
-| `password` | `String` | No | `required: true` (Bcrypt hash) | Hashed credential secret |
-| `role` | `String` | No | `enum: ["ADMIN"], default: "ADMIN"` | Role authorization level |
-| `sessionId` | `String` | Yes | `default: null` | Current active JWT session ID |
-| `createdAt` | `Date` | No | Managed via `timestamps: true` | Record creation timestamp |
-| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Last modification timestamp |
+| `username` | `String` | No | `required: true, trim: true` | Full name / display username (2-50 chars) |
+| `email` | `String` | No | `required: true, unique: true, lowercase: true, trim: true` | Unique login email address |
+| `password` | `String` | No | `required: true` (Bcrypt hash) | Hashed credential secret (min 8 chars, mixed case, number, symbol) |
+| `role` | `String` | No | `enum: ["ADMIN", "HR", "EMPLOYEE"], default: "EMPLOYEE"` | Role-based access control level |
+| `phone` | `String` | No | `default: "", trim: true` | ITU-T E.164 international contact phone |
+| `department` | `String` | No | `default: "Administration", trim: true` | Departmental organizational unit |
+| `designation` | `String` | No | `default: "Employee", trim: true` | Official position / job title |
+| `monthlySalary` | `Number` | No | `default: 0, min: 0` | Base monthly compensation |
+| `status` | `String` | No | `enum: ["ACTIVE", "INACTIVE"], default: "ACTIVE"` | Account status flag |
+| `createdBy` | `ObjectId` | Yes | `ref: "User", default: null` | Audit tracking reference to creator user |
+| `sessionId` | `String` | Yes | `default: null` | Current active single-session UUID token |
+| `joiningDate` | `Date` | No | `default: Date.now` | Official company employment start date |
+| `deactivatedAt` | `Date` | Yes | `default: null, index: true` | Timestamp when marked INACTIVE (triggers 30d countdown) |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Audit record creation timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Audit last modification timestamp |
+
+### 5.3 Core Validation Schemas & Regular Expressions
+Defined symmetrically in [backend/src/types/employee.types.ts](file:///d:/HRMS/backend/src/types/employee.types.ts) and [frontend/src/types/employee.types.ts](file:///d:/HRMS/frontend/src/types/employee.types.ts):
+
+1. **`PASSWORD_REGEX`**:
+   - Expression: `/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/`
+   - Policy: Requires $\ge 8$ characters, at least 1 uppercase letter, at least 1 lowercase letter, at least 1 number, and at least 1 special character from `@$!%*?&#`.
+2. **`E164_PHONE_REGEX`**:
+   - Expression: `/^\+[1-9]\d{1,14}$/`
+   - Policy: Enforces ITU-T E.164 international standard (e.g. `+919876543210`).
+3. **`createEmployeeSchema` (Zod)**:
+   - Validates incoming creation payloads on both client form submission and backend request intake:
+     - `username`: String, trimmed, 2-50 characters.
+     - `email`: String, trimmed, lowercased, valid email format.
+     - `password`: String, matches `PASSWORD_REGEX`.
+     - `role`: Enum `["ADMIN", "HR", "EMPLOYEE"]`.
+     - `phone`: String, trimmed, matches `E164_PHONE_REGEX` and refined against Google's `libphonenumber-js` national plan validation (verifies exact 10 digits for India `+91` starting with 6-9, as well as exact plan requirements across all selected countries).
+     - `department`: String, trimmed, non-empty.
+     - `designation`: String, trimmed, non-empty.
+     - `monthlySalary`: Number, strictly positive ($> 0$).
+     - `joiningDate`: Union of non-empty ISO date string or `Date` object, refined with validation enforcing $\text{joiningDate} \ge \text{today}$ (strictly disallowing historical / past dates).
 
 ---
 
@@ -273,6 +342,236 @@ The server runs on port 5000 and currently mounts the following production endpo
 
 ---
 
+### 6.4 `POST /api/employees`
+- **Description**: Registers a new employee or staff user after running symmetric Zod validation and enforcing role-based hierarchy boundaries.
+- **Access**: Protected (Requires valid JWT with role `"ADMIN"` or `"HR"`, active `sessionId`).
+- **Request Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
+- **Request Body**:
+  ```json
+  {
+    "username": "Jane Doe",
+    "email": "jane.doe@hrms.com",
+    "password": "Password@123",
+    "role": "EMPLOYEE",
+    "phone": "+919876543210",
+    "department": "Engineering",
+    "designation": "Software Engineer",
+    "monthlySalary": 85000,
+    "joiningDate": "2026-11-19"
+  }
+  ```
+- **Success Response (`201 Created`)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Employee created successfully.",
+    "data": {
+      "employee": {
+        "id": "673ca80220108db3cf5f8010",
+        "username": "Jane Doe",
+        "email": "jane.doe@hrms.com",
+        "role": "EMPLOYEE",
+        "phone": "+919876543210",
+        "department": "Engineering",
+        "designation": "Software Engineer",
+        "monthlySalary": 85000,
+        "status": "ACTIVE",
+        "joiningDate": "2026-11-19T00:00:00.000Z",
+        "createdBy": "673ca19f20108db3cf5f8001",
+        "sessionId": null,
+        "createdAt": "2026-11-19T14:10:00.000Z",
+        "updatedAt": "2026-11-19T14:10:00.000Z"
+      }
+    }
+  }
+  ```
+- **Error Responses**:
+  - `400 Bad Request`: Payload validation error (returns `{ "status": "fail", "message": "...", "errors": [...] }`).
+  - `401 Unauthorized`: Missing/expired token or invalidated session.
+  - `403 Forbidden`: Caller lacks required role, or logged-in HR attempts to create HR/Admin role or HR/Admin designation.
+  - `409 Conflict`: An account with the specified email address already exists.
+  - `500 Internal Server Error`: Server exception.
+
+---
+
+### 6.5 `GET /api/employees`
+- **Description**: Returns the list of all registered employees with passwords excluded, sorted by newest first.
+- **Access**: Protected (Requires valid JWT with role `"ADMIN"`, `"HR"`, or `"EMPLOYEE"`, active `sessionId`).
+- **Request Headers**: `Authorization: Bearer <token>`
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "status": "success",
+    "data": {
+      "employees": [
+        {
+          "id": "673ca80220108db3cf5f8010",
+          "username": "Jane Doe",
+          "email": "jane.doe@hrms.com",
+          "role": "EMPLOYEE",
+          "phone": "+919876543210",
+          "department": "Engineering",
+          "designation": "Software Engineer",
+          "monthlySalary": 85000,
+          "status": "ACTIVE",
+          "joiningDate": "2026-11-19T00:00:00.000Z",
+          "createdBy": "673ca19f20108db3cf5f8001",
+          "sessionId": null,
+          "createdAt": "2026-11-19T14:10:00.000Z",
+          "updatedAt": "2026-11-19T14:10:00.000Z"
+        }
+      ],
+      "total": 1
+    }
+  }
+  ```
+- **Error Responses**:
+  - `401 Unauthorized`: Authentication required or expired session.
+
+---
+
+### 6.6 `PATCH /api/employees/:id/deactivate`
+- **Description**: Soft-deletes an employee account by setting `status = "INACTIVE"`, recording `deactivatedAt = new Date()`, and wiping `sessionId = null` to immediately terminate all active sessions.
+- **Access**: Protected (`verifyToken`, `authorizeRoles("ADMIN", "HR")`).
+- **Path Parameters**: `:id` (24-character hex MongoDB ObjectId).
+- **Security Invariants Enforced**:
+  - `targetId === actorId` $\to$ `400 Bad Request` ("You cannot deactivate your own account.").
+  - `actorRole === "HR"` and target is `HR` or `ADMIN` $\to$ `403 Forbidden` ("HR users cannot deactivate HR or Admin accounts.").
+  - Target already inactive $\to$ `400 Bad Request` ("Employee is already inactive.").
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Employee deactivated successfully.",
+    "data": {
+      "employee": {
+        "id": "673ca80220108db3cf5f8010",
+        "username": "Jane Doe",
+        "email": "jane.doe@hrms.com",
+        "status": "INACTIVE",
+        "deactivatedAt": "2026-11-19T18:15:00.000Z"
+      }
+    }
+  }
+  ```
+
+---
+
+### 6.7 `PATCH /api/employees/:id/reactivate`
+- **Description**: Restores an inactive employee account back to `status = "ACTIVE"` and clears `deactivatedAt = null`.
+- **Access**: Protected (`verifyToken`, `authorizeRoles("ADMIN", "HR")`).
+- **Path Parameters**: `:id` (24-character hex MongoDB ObjectId).
+- **Security Invariants Enforced**:
+  - `actorRole === "HR"` and target is `HR` or `ADMIN` $\to$ `403 Forbidden`.
+  - Target already active $\to$ `400 Bad Request` ("Employee is already active.").
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Employee reactivated successfully.",
+    "data": {
+      "employee": {
+        "id": "673ca80220108db3cf5f8010",
+        "status": "ACTIVE",
+        "deactivatedAt": null
+      }
+    }
+  }
+  ```
+
+---
+
+### 6.8 Midnight Background Cron Job (Automated 30-Day Permanent Purge)
+- **Engine**: `node-cron` scheduler initialized in [backend/src/cron/employeeCleanup.cron.ts](file:///d:/HRMS/backend/src/cron/employeeCleanup.cron.ts) during server startup.
+- **Schedule**: `0 0 * * *` (Fires every midnight at 00:00:00).
+- **Cutoff Formula**:
+  $$\text{cutoffDate} = \text{new Date}() - (30 \times 24 \times 60 \times 60 \times 1000)$$
+- **Database Query**:
+  ```typescript
+  UserModel.deleteMany({
+    status: "INACTIVE",
+    deactivatedAt: { $ne: null, $lte: cutoffDate }
+  });
+  ```
+- **Logging**: Outputs timestamped count of permanently deleted expired accounts to server stdout.
+
+---
+
+### 6.9 `PUT /api/employees/:id`
+- **Description**: Updates an existing employee or staff record with symmetric Zod schema validation, duplicate email detection, password updating, and strict RBAC hierarchy rules.
+- **Access**: Protected (`verifyToken`, `authorizeRoles("ADMIN", "HR")`).
+- **Path Parameters**: `:id` (24-character hex MongoDB ObjectId).
+- **Request Body**: Validated against `updateEmployeeSchema` (supports updating `username`, `email`, optional `password`, `phone`, `department`, `designation`, `monthlySalary`, `role`, and `joiningDate`).
+- **Security Invariants & Business Logic Enforced**:
+  - `actorRole === "HR"` and target is `HR` or `ADMIN` $\to$ `403 Forbidden` ("HR users cannot update HR or Admin accounts.").
+  - `actorRole === "HR"` and payload assigns `role: "HR"` or `role: "ADMIN"`, or designation matches `/^(hr|admin)/i` $\to$ `403 Forbidden` ("HR users cannot assign HR or Admin roles or designations.").
+  - `ADMIN`: Superuser authority to update `HR` and standard `EMPLOYEE` details, including credentials and roles.
+  - **Email Uniqueness Verification**: If `payload.email` changes, `findEmployeeByEmail` checks if another account (`_id !== targetId`) already owns that email $\to$ `409 Conflict` ("An employee with this email already exists.").
+  - **Password Modification Flow**:
+    - Optional in payload: if empty/omitted, the employee's existing hashed password remains untouched in MongoDB.
+    - If provided, validated against `PASSWORD_REGEX` (min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special character), hashed via `bcrypt.hash(password, 10)`, and saved to MongoDB.
+    - When a new password is set, the employee's `sessionId` is set to `null` in MongoDB, instantly invalidating any active JWT sessions and requiring them to log in with the new password.
+- **Success Response (`200 OK`)**:
+  ```json
+  {
+    "status": "success",
+    "message": "Employee updated successfully.",
+    "data": {
+      "employee": {
+        "id": "673ca80220108db3cf5f8010",
+        "username": "Jane Doe Updated",
+        "email": "jane.doe.updated@hrms.com",
+        "role": "EMPLOYEE",
+        "phone": "+919876543210",
+        "department": "Engineering",
+        "designation": "Lead Full Stack Engineer",
+        "monthlySalary": 95000,
+        "status": "ACTIVE",
+        "joiningDate": "2026-11-19T00:00:00.000Z"
+      }
+    }
+  }
+  ```
+
+---
+
+### 6.10 `/api/notifications` Endpoints
+- **Description**: Real-time persistent notification queries and read acknowledgments.
+- **Access**: Protected (`verifyToken` required across all sub-routes).
+- **Sub-Routes**:
+  - `GET /api/notifications`: Returns the latest 20 notifications targeted to the authenticated user (or their role) along with total `unreadCount`.
+  - `PATCH /api/notifications/:id/read`: Marks an individual notification as read.
+  - `PATCH /api/notifications/mark-all-read`: Marks all unread notifications for the user or HR room as read.
+
+---
+
+### 6.11 `/api/attendance` Endpoints (Module 3 Backend)
+- **Description**: Web-based punch-in/out, daily flex shift calculations, monthly history, administrative roster, and missed punch correction requests.
+- **Access**: Protected (`verifyToken` required across all endpoints; administrative endpoints restricted via `authorizeRoles("ADMIN", "HR")`).
+- **Sub-Routes & Method Contracts**:
+  - `POST /api/attendance/punch-in`: Self-service daily arrival registration. Evaluates grace window (09:00–09:30 AM), sets `expectedPunchOut` (compensating flex time in the evening), or flags `isLate: true` if punch-in exceeds 09:30 AM.
+  - `POST /api/attendance/punch-out`: Self-service daily departure registration. Computes `totalWorkingMinutes` (excluding 1-hr lunch for shifts $\ge 5 \text{ hrs}$), evaluates status (`ABSENT` if $< 4 \text{ hrs}$, `HALF_DAY` if $4 \le \text{hrs} < 7$, `PRESENT` if $\ge 7 \text{ hrs}$ and compensated).
+  - `GET /api/attendance/today`: Retrieves today's punch state and company shift parameters for the logged-in user.
+  - `GET /api/attendance/my-history`: Returns paginated monthly attendance records for the logged-in employee (`page`, `limit`, `startDate`, `endDate`).
+  - `GET /api/attendance/all`: Management view (`HR`, `ADMIN`). Retrieves complete workforce attendance roster for a specific date with optional department filtering.
+  - `POST /api/attendance/correction`: Self-service missed punch override request validated by `createCorrectionSchema`. Saves `AttendanceCorrection` with `status: PENDING`, creates a Notification record, and emits `notification:new` to `hr-room`.
+  - `GET /api/attendance/corrections`: Management view (`HR`, `ADMIN`). Retrieves list of submitted corrections with optional `status` query filter (`PENDING`, `APPROVED`, `REJECTED`).
+  - `PATCH /api/attendance/corrections/:id/review`: Management action (`HR`, `ADMIN`) validated by `reviewCorrectionSchema`. If `APPROVED`, updates the target `Attendance` document, recalculates late/flex metrics, sets `isCorrected: true`, and notifies the applicant in room `user_${userId}` via Socket.io.
+
+---
+
+### 6.12 `/api/leaves` Endpoints (Module 5 Backend)
+- **Description**: Leave quota balances, full-day/half-day applications, Loss of Pay (LOP) designations, and HR review workflows.
+- **Access**: Protected (`verifyToken` required across all endpoints; review and workforce roster restricted via `authorizeRoles("ADMIN", "HR")`).
+- **Sub-Routes & Method Contracts**:
+  - `GET /api/leaves/balance`: Returns yearly paid leave quota (default: 5), used paid days in current year, remaining paid days, and total loss-of-pay days for the logged-in employee.
+  - `POST /api/leaves/apply`: Validated via `applyLeaveSchema`. Calculates duration (0.5 for `HALF_DAY`, calendar days for `FULL_DAY`), checks for overlapping leaves, splits requested duration into `paidDaysCount` and `lossOfPayDaysCount` (LOP), saves `status: PENDING`, creates persistent Notification, and emits `notification:new` to `hr-room`.
+  - `GET /api/leaves/my-leaves`: Retrieves paginated history of personal leave requests with review audit info.
+  - `GET /api/leaves/all`: Management view (`HR`, `ADMIN`). Retrieves complete workforce leave applications with optional `status` filter (`PENDING`, `APPROVED`, `REJECTED`).
+  - `PATCH /api/leaves/:id/review`: Management action (`HR`, `ADMIN`) validated by `reviewLeaveSchema`. Updates `status` to `APPROVED` or `REJECTED`, creates persistent Notification, and broadcasts real-time update to applicant in `user_${userId}`.
+
+---
+
 ## 7. Security Architecture & Authentication Mechanics
 
 ### 7.1 Single-Active-Session Enforcement
@@ -311,8 +610,12 @@ sequenceDiagram
 
 ### 7.2 Centralized Error Taxonomy
 Declared in [backend/src/utils/errors.ts](file:///d:/HRMS/backend/src/utils/errors.ts):
-- `AuthenticationError`: Extends native `Error` with `statusCode: 401`.
-- Clean separation ensures controller catches domain-specific errors without process termination.
+- `AuthenticationError`: Extends native `Error` with `statusCode: 401` (Unauthorized).
+- `ForbiddenError`: Extends native `Error` with `statusCode: 403` (Forbidden / RBAC hierarchy violations).
+- `ConflictError`: Extends native `Error` with `statusCode: 409` (Conflict / duplicate email collision).
+- `ValidationError`: Extends native `Error` with `statusCode: 400` (Bad Request / input schema failure).
+- `NotFoundError`: Extends native `Error` with `statusCode: 404` (Resource Not Found).
+- Clean architectural separation guarantees that controllers cleanly map domain exceptions to RFC 7807 compliant HTTP status codes without unhandled process termination.
 
 ---
 
@@ -332,7 +635,78 @@ Implemented in [src/context/SidebarContext.tsx](file:///d:/HRMS/frontend/src/con
 Implemented in [src/components/icons.tsx](file:///d:/HRMS/frontend/src/components/icons.tsx):
 - Configured with `transpilePackages: ["@mui/material", "@mui/icons-material", "@mui/system"]` in [next.config.ts](file:///d:/HRMS/frontend/next.config.ts).
 - Uses `withCustomSize` Higher-Order Component (HOC) wrapping `@mui/icons-material/*` icons with `fontSize: "1.25em"` and Tailwind `className` passthrough.
+- Centralized icon roster includes: `AddIcon`, `PersonIcon`, `PhoneIcon`, `WorkIcon`, `FilterListIcon`, `BadgeIcon`, `LockIcon`, `VisibilityIcon`, `VisibilityOffIcon`, `EmailIcon`, `DashboardIcon`, `GroupIcon`, `EmployeesIcon`, `PaymentsIcon`, `BarChartIcon`, `LogoutIcon`, `CloseIcon`, `CancelIcon`, and `CheckCircleIcon`.
 - **Strict Rule**: Zero raw inline `<svg>` glyphs in pages or components. All icons must be imported from `src/components/icons.tsx`.
+
+### 8.4 Workforce Directory & Add Employee Modal (Module 2)
+Implemented in [src/components/employees/EmployeesView.tsx](file:///d:/HRMS/frontend/src/components/employees/EmployeesView.tsx) and [src/components/employees/AddEmployeeModal.tsx](file:///d:/HRMS/frontend/src/components/employees/AddEmployeeModal.tsx):
+1. **Dynamic Roster Table**:
+   - Consumes `useEmployeesQuery` hook with automatic 5-minute stale-time caching.
+   - Interactive search bar filtering across name, email, phone, designation, and department.
+   - Dual dropdown filtering: Department filter and Role filter (`All Roles`, `ADMIN`, `HR`, `EMPLOYEE`).
+   - Styled badge taxonomy: `ADMIN` (purple/indigo), `HR` (sky blue), `EMPLOYEE` (teal/emerald), `ACTIVE` (pulsing green dot).
+2. **Add Employee Modal**:
+   - Modal backdrop with smooth entrance animations (`animate-in fade-in zoom-in-95`).
+   - Fields: Full Name, Email, Password (with eye toggle), Mobile Phone (E.164), Role, Department, Designation, Monthly Salary, and Joining Date.
+   - **Strict Real-Time Inline HR Validation Rule**:
+     - When the authenticated user has role `"HR"`:
+     - If the user types `"hr"`, `"human resource"`, or `"admin"` into the Designation input (or selects an elevated role), an immediate red input border and red warning message appear on blur/change: `"HR users are not authorized to create HR or Admin roles."`
+     - The modal submit button is instantly disabled until the input is corrected.
+   - On successful submission, TanStack Query automatically invalidates the `["employees"]` cache key, triggering an instant UI table update.
+
+### 8.5 Topbar User Profile & Session Logout Dropdown
+Implemented in [src/components/dashboard/Topbar.tsx](file:///d:/HRMS/frontend/src/components/dashboard/Topbar.tsx):
+- **Interactive Avatar & Trigger**: Interactive profile container with click-outside listener (`useRef` + `mousedown` event), rotating chevron indicator, and responsive user initials badge.
+- **Dropdown Identity Card**:
+  - Displays user's full display name, authenticated email address, and role badge (`ADMIN`, `HR`, `EMPLOYEE`).
+- **One-Click Logout**:
+  - Dispatches Redux `logout()` action (which wipes token and user credentials from Redux state and `localStorage`).
+  - Clears TanStack Query memory cache via `queryClient.clear()` to prevent data leaks.
+  - Automatically redirects caller to `/login` via Next.js `router.replace("/login")`.
+  - Icon centralized with `LogoutIcon` from `src/components/icons.tsx`.
+
+### 8.6 Query Caching Policy & Route Transition Optimization
+Implemented in [src/providers/AppProviders.tsx](file:///d:/HRMS/frontend/src/providers/AppProviders.tsx), [src/app/dashboard/layout.tsx](file:///d:/HRMS/frontend/src/app/dashboard/layout.tsx), and [src/components/auth/LoginForm.tsx](file:///d:/HRMS/frontend/src/components/auth/LoginForm.tsx):
+1. **Cache Retention & Stale Timing**:
+   - `staleTime`: Explicitly configured to **5 minutes** (`5 * 60 * 1000`). Data fetched within 5 minutes is considered fresh and served instantly with zero background network roundtrips.
+   - `gcTime` (Garbage Collection / Cache Time): Configured to **10 minutes** (`10 * 60 * 1000`). Unused query cache data is retained in memory for 10 minutes before garbage collection.
+   - `refetchOnWindowFocus`: Explicitly set to `false` to avoid jarring, unexpected network fetches when switching browser tabs.
+   - Reactive Revalidation: Mutations (`useCreateEmployeeMutation`) explicitly invalidate target queries (`["employees"]`) to ensure the table displays updated data instantly upon record addition.
+2. **Instant Route Prefetching**:
+   - `LoginForm.tsx` prefetches `/dashboard` and `/dashboard/employees` upon mount, ensuring that submitting login credentials transitions to the dashboard without JIT compilation delays.
+   - `Topbar.tsx`, `Sidebar.tsx`, and `DashboardLayout.tsx` prefetch `/login` on mount, ensuring that triggering a logout immediately swaps to the login screen without stall or cold-compilation delays.
+   - `queryClient.clear()` is executed immediately on logout to purge active in-memory cache and prevent unauthorized state leaks.
+
+### 8.7 Granular RBAC Actions & Deactivation Dialog
+Implemented in [src/components/employees/EmployeesView.tsx](file:///d:/HRMS/frontend/src/components/employees/EmployeesView.tsx) and [src/components/employees/DeactivateConfirmationModal.tsx](file:///d:/HRMS/frontend/src/components/employees/DeactivateConfirmationModal.tsx):
+1. **Dynamic Action Controls**:
+   - `EMPLOYEE`: Actions column and "+ Add Employee" button are completely hidden (read-only self profile).
+   - `HR`: Can Add, Deactivate, and Reactivate standard `EMPLOYEE` rows only. For `HR` or `ADMIN` rows, actions show "Restricted" tooltip.
+   - `ADMIN`: Superuser authority across all rows. For self row, action button is disabled with "Current User" badge (preventing self-lockout).
+2. **Deactivate Confirmation Dialog**:
+   - Prompts manager with alert warning that the employee will immediately lose access, in-flight sessions will terminate, and the account will be scheduled for automated permanent deletion after 30 days unless reactivated.
+   - Triggers `useDeactivateEmployeeMutation` calling `PATCH /api/employees/:id/deactivate`.
+3. **Countdown Badging**:
+   - For `INACTIVE` accounts, displays dynamic days remaining before permanent midnight purge: e.g. `Inactive (24d left)`.
+   - "Reactivate" button triggers `useReactivateEmployeeMutation` calling `PATCH /api/employees/:id/reactivate`, restoring the account immediately.
+
+### 8.8 Edit Employee Modal & RBAC Update Mechanics
+Implemented in [src/components/employees/EditEmployeeModal.tsx](file:///d:/HRMS/frontend/src/components/employees/EditEmployeeModal.tsx) and [src/components/employees/EmployeesView.tsx](file:///d:/HRMS/frontend/src/components/employees/EmployeesView.tsx):
+1. **Pre-Populated Form & Editable Fields**:
+   - Opens pre-populated with current target employee's values (`username`, `email`, `phone`, `role`, `department`, `designation`, `monthlySalary`, `joiningDate`).
+   - **Email Address**: Fully editable by HR and Admin. Handled with uniqueness checks and HTTP 409 conflict notifications.
+   - **New Password Field**:
+     - Opens empty by default.
+     - If left blank, the employee's existing password in MongoDB is preserved unchanged.
+     - If typed, managers can toggle the eye icon to view/verify plain text before submission.
+     - Real-time client and server validation enforces `PASSWORD_REGEX` (min 8 characters, mixed-case, numbers, special characters).
+     - Submitting hashes the password with Bcrypt (10 salt rounds) and resets `sessionId: null` to invalidate any active sessions.
+2. **Real-Time Inline HR Barrier**:
+   - If logged-in user is `HR`, elevated roles (`ADMIN`, `HR`) are disabled in dropdown.
+   - If HR types `/^(hr|human resource|admin)/i` into the designation field, an immediate red border and warning indicator appear, disabling the Save button.
+3. **Actions Integration**:
+   - Actions column displays an "Edit" button with centralized `EditIcon`.
+   - On save, `useUpdateEmployeeMutation` issues `PUT /api/employees/:id` and automatically invalidates the `["employees"]` query cache.
 
 ---
 
@@ -343,6 +717,479 @@ Implemented in [src/components/icons.tsx](file:///d:/HRMS/frontend/src/component
 | `0.1.0` | 2026-11-19 | **Initial Backend Architecture**: Express server, Mongoose DB connection, `User` model, admin seed script (`backend/src/seed.ts`), 4-tier auth flow, JWT issuance. | Verified & Live |
 | `0.2.0` | 2026-11-19 | **Frontend Auth & State**: Redux Toolkit `authSlice`, TanStack React Query, Axios centralized client, Viewport-locked `LoginForm.tsx`. | Verified & Live |
 | `0.3.0-baseline` | 2026-11-19 | **Dashboard Shell & Centralized Icons**: Viewport-locked `/dashboard` page, sticky `Sidebar`, sticky `Topbar`, `SidebarContext`, full `@mui/icons-material` integration, extension hydration defense script. | Verified & Live |
+| `0.4.0-module2-foundation` | 2026-11-19 | **Module 2 Types & Schemas**: Installed Zod, created symmetric `employee.types.ts` schemas (`PASSWORD_REGEX`, `E164_PHONE_REGEX`, `createEmployeeSchema`), upgraded `User` Mongoose model with role matrix. | Verified & Live |
+| `0.5.0-module2-backend` | 2026-11-19 | **Module 2 4-Tier Backend**: Reusable `validateBody` Zod middleware, `authorizeRoles`, `EmployeeRepository`, `EmployeeService` with HR barriers, `EmployeeController`, mounted `/api/employees`. | Verified & Live |
+| `0.6.0-module2-fullstack` | 2026-11-19 | **Module 2 Full-Stack Integration**: `employee.service.ts`, `useEmployeesQuery`, `useCreateEmployeeMutation`, `AddEmployeeModal.tsx` with real-time inline HR validation, `EmployeesView.tsx` directory table, `/employees` route, and end-to-end verified login. | Verified & Live |
+| `0.6.1-perf-cache` | 2026-11-19 | **Cache & Transition Optimization**: Configured explicit `staleTime` (5m) and `gcTime` (10m) in `AppProviders.tsx`, added route prefetching for `/login` and `/dashboard`, and integrated `queryClient.clear()` on logout. | Verified & Live |
+| `0.7.0-rbac-deactivation-cleanup` | 2026-11-19 | **RBAC, Soft Delete & Midnight Cron**: Implemented `deactivatedAt` timestamp and compound index, session termination on deactivation, login block for inactive users, `PATCH /:id/deactivate`, `PATCH /:id/reactivate`, `node-cron` 30-day automated hard-delete job (`0 0 * * *`), `DeactivateConfirmationModal.tsx`, dynamic countdown badges, and RBAC action permissions. | Verified & Live |
+| `0.8.0-employee-update-rbac` | 2026-11-20 | **Edit Employee & RBAC Update Engine**: Implemented `updateEmployeeSchema`, `PUT /api/employees/:id`, `updateEmployeeService` with HR ceiling barriers, `EditEmployeeModal.tsx` pre-populated with country phone selector & real-time HR validation, and integrated Edit action buttons into `EmployeesView.tsx`. | Verified & Live |
+| `0.8.1-employee-credentials-update` | 2026-11-20 | **Editable Email & Optional Password Reset**: Unlocked `email` field with duplicate collision check (409 Conflict); added optional `password` field (empty by default, eye visibility toggle, `PASSWORD_REGEX` validation, 10 salt rounds Bcrypt hash, active session kill). | Verified & Live |
+| `0.9.0-phase1-database-socketio` | 2026-11-20 | **Phase 1: Database Foundation & Real-Time Socket.io**: Created 5 Mongoose schemas (`CompanySettings`, `Attendance`, `AttendanceCorrection`, `Leave`, `Notification`); automated company settings startup seed; wrapped Express with `http.createServer` and initialized `socket.io` with JWT auth handshake; room routing for `user_<id>` and `hr-room`; built 4-tier Notification API; created frontend `SocketContext.tsx` and persistent dynamic Bell dropdown in `Topbar.tsx`. | Verified & Live |
+| `0.10.0-module3-attendance-backend` | 2026-11-20 | **Module 3 Backend & Business Math**: Implemented full 4-tier flow for Attendance & Corrections (`attendance.repository.ts`, `attendanceCorrection.repository.ts`, `settings.repository.ts`, `attendance.service.ts`, `attendance.controller.ts`, `attendance.routes.ts`); built flex-window math (9:00-9:30 AM arrival $\to$ evening compensation; >9:30 AM arrival $\to$ strict late tag with exact minute delay); 1-hr lunch deduction; status evaluation (`PRESENT`, `HALF_DAY`, `ABSENT`); Missed Punch Correction submission and HR approval workflow with real-time Socket.io notifications. | Verified & Live |
+| `0.11.0-module5-leaves-backend` | 2026-11-20 | **Module 5 Backend & Quota Engine**: Implemented 4-tier flow for Leaves (`leave.repository.ts`, `leave.service.ts`, `leave.controller.ts`, `leave.routes.ts`); built leave balance calculation (5-day annual quota); half-day 0.5-day post-lunch policy; Loss of Pay (LOP) automatic designation for exhausted balances; overlapping leave validation; HR approval workflow with real-time Socket.io notification broadcasts. | Verified & Live |
+| `0.12.0-module3-module5-fullstack` | 2026-11-20 | **Full-Stack UI for Attendance & Leaves**: Built dedicated `/attendance` route with live digital clock, punch in/out toggle, flex evening target display, missed punch 12-hour AM/PM correction modal, monthly history and HR roster; built dedicated `/leaves` route with quota overview cards, LOP warning banner, half-day post-lunch toggle, personal leave history, and HR review queue; updated Sidebar navigation and connected Socket.io real-time notifications with dynamic badges and auto-invalidation. | Verified & Live |
+
+---
+
+## 10. Phase 1 & Module 3 Architecture: Foundation, Sockets & Attendance Engine
+
+### 10.1 Company Settings Architecture (`backend/src/models/settings.model.ts`)
+- Stores global operational parameters configured by HR/Admin:
+  - `shiftStartTime`: `"09:00"` (Default official start)
+  - `shiftEndTime`: `"18:00"` (Default official departure)
+  - `graceWindowEndTime`: `"09:30"` (Flex window cutoff)
+  - `standardWorkHoursPerDay`: `8` (Excluding 1-hour lunch from 12:00 to 13:00)
+  - `lunchStartTime`: `"12:00"`, `lunchEndTime`: `"13:00"`
+  - `yearlyPaidLeaveQuota`: `5` (Annual quota per employee)
+- **Automatic Startup Seeding**: Implemented in `backend/src/utils/seedSettings.ts` and invoked automatically during `startServer` in `backend/src/server.ts` to ensure defaults exist in MongoDB upon boot.
+
+### 10.2 Attendance & Correction Schemas
+- **Attendance Model (`backend/src/models/attendance.model.ts`)**:
+  - `userId` (ObjectId ref User), `date` (normalized UTC midnight), `punchIn` (Date), `punchOut` (Date), `status` (`PRESENT`, `HALF_DAY`, `ABSENT`, `ON_LEAVE`).
+  - Late & flex fields: `isLate` (boolean), `lateMinutes` (number), `flexMinutesOwed` (number), `expectedPunchOut` (Date), `isCompensated` (boolean), `totalWorkingMinutes` (number), `isCorrected` (boolean), `correctionRequestId` (ObjectId ref).
+  - **Compound Unique Index**: `{ userId: 1, date: 1 }` strictly prevents duplicate daily records for the same employee.
+- **Attendance Correction Model (`backend/src/models/attendanceCorrection.model.ts`)**:
+  - Tracks missed punch overrides: `attendanceId`, `userId`, `date`, `originalPunchIn`, `requestedPunchIn`, `originalPunchOut`, `requestedPunchOut`, `reason` (mandatory), `status` (`PENDING`, `APPROVED`, `REJECTED`), `reviewedBy`, `reviewedAt`, `rejectionReason`.
+
+### 10.3 Leave & Notification Schemas
+- **Leave Model (`backend/src/models/leave.model.ts`)**:
+  - `userId`, `startDate`, `endDate`, `leaveType` (`FULL_DAY` | `HALF_DAY`), `numberOfDays` (0.5 for half day, 1.0+ for full), `reason` (mandatory), `status` (`PENDING`, `APPROVED`, `REJECTED`), `isPaid` (boolean), `paidDaysCount`, `lossOfPayDaysCount` (LOP), `reviewedBy`, `reviewedAt`, `rejectionReason`.
+- **Notification Model (`backend/src/models/notification.model.ts`)**:
+  - `recipientId` (ObjectId ref User, null for HR broadcasts), `targetRole` (`HR`, `ADMIN`, null), `type` (`LEAVE_APPLIED`, `LEAVE_APPROVED`, `LEAVE_REJECTED`, `CORRECTION_REQUESTED`, `CORRECTION_APPROVED`, `CORRECTION_REJECTED`), `title`, `message`, `link`, `isRead` (boolean, default false), `metadata`, `createdAt`.
+  - Compound indices on `{ recipientId: 1, isRead: 1, createdAt: -1 }` and `{ targetRole: 1, isRead: 1, createdAt: -1 }`.
+
+### 10.4 Real-Time Socket.io Gateway Topology
+- **Server Wrapper**: In `backend/src/server.ts`, Express is wrapped with Node's native `http.createServer(app)`.
+- **JWT Handshake Security**: `initSocketServer` in `backend/src/socket/index.ts` verifies `socket.handshake.auth.token` using `jwt.verify(token, JWT_SECRET)`.
+- **Room Topology**:
+  - Every authenticated socket automatically joins `user_${user.id}`.
+  - If the user has role `HR` or `ADMIN`, the socket additionally joins `hr-room`.
+- **Event Helpers**:
+  - `emitToUser(userId, event, payload)`
+  - `emitToHR(event, payload)`
+  - `emitToAll(event, payload)`
+
+### 10.5 Frontend Real-Time Gateway & UI Integration
+- **Socket Provider Context (`frontend/src/context/SocketContext.tsx`)**:
+  - Establishes singleton authenticated connection to backend gateway.
+  - Subscribes to `notification:new` events and immediately triggers query cache invalidations on `["notifications"]`.
+- **Interactive Topbar Notification Bell (`frontend/src/components/dashboard/Topbar.tsx`)**:
+  - Persistent Bell Icon displaying a dynamic unread badge counter (`unreadCount > 0`).
+  - Dropdown menu rendering list of notifications with relative timestamps, type-specific status icons (Calendar, Clock, Check, Cancel), and unread indicators.
+  - "Mark all as read" button executing `PATCH /api/notifications/mark-all-read`.
+  - Individual click marks single notification as read and navigates to the linked route.
+
+### 10.6 Module 3: Attendance Business Math & Compensation Mechanics
+Implemented across `attendance.repository.ts`, `attendance.service.ts`, `attendance.controller.ts`, and `attendance.routes.ts`:
+
+1. **Shift Timings & Grace Window Computation**:
+   - $\text{ShiftStart} = \text{09:00:00 AM}$, $\text{GraceEnd} = \text{09:30:00 AM}$, $\text{ShiftEnd} = \text{18:00:00 PM}$.
+   - **Case A (On-Time $\le$ 09:00 AM)**:
+     $$\text{isLate} = \text{false}, \quad \text{lateMinutes} = 0, \quad \text{flexMinutesOwed} = 0, \quad \text{expectedPunchOut} = \text{18:00}$$
+   - **Case B (Grace Window 09:00:01 AM – 09:30:00 AM)**:
+     $$\text{isLate} = \text{false}, \quad \text{lateMinutes} = 0$$
+     $$\text{flexMinutesOwed} = \text{PunchIn} - \text{09:00 AM}$$
+     $$\text{expectedPunchOut} = \text{18:00} + \text{flexMinutesOwed}$$
+     *(e.g., Punch-in at 09:20 AM requires evening compensation until 18:20 PM).*
+   - **Case C (Strict Late Arrival > 09:30:00 AM)**:
+     $$\text{isLate} = \text{true}, \quad \text{lateMinutes} = \text{PunchIn} - \text{09:00 AM}, \quad \text{flexMinutesOwed} = 0, \quad \text{expectedPunchOut} = \text{18:00}$$
+     *(e.g., Punch-in at 09:45 AM flags $\text{isLate} = \text{true}$ with "Late by 45 mins").*
+
+2. **Punch-Out Duration & Status Determination**:
+   - Deducts 60 minutes for lunch if gross elapsed time $\ge 300 \text{ minutes (5 hours)}$.
+   - Total effective duration evaluates:
+     - $\text{totalWorkingMinutes} < 240 \text{ mins (4 hours)} \implies \text{status} = \text{ABSENT}$.
+     - $240 \le \text{totalWorkingMinutes} < 420 \text{ mins (4–7 hours)} \implies \text{status} = \text{HALF\_DAY}$.
+     - $\text{totalWorkingMinutes} \ge 420 \text{ mins}$:
+       - If $\text{PunchOut} \ge \text{expectedPunchOut} \implies \text{isCompensated} = \text{true}, \text{status} = \text{PRESENT}$.
+       - If $\text{totalWorkingMinutes} \ge 480 \text{ mins} \implies \text{status} = \text{PRESENT}$.
+       - Otherwise $\implies \text{status} = \text{HALF\_DAY}$.
+
+3. **Missed Punch Correction & HR Audit Workflow**:
+   - `POST /api/attendance/correction`: Submits `requestedPunchIn`, `date`, and mandatory `reason`. Checks for existing pending requests before creating `status: PENDING`.
+   - Real-time alert: Persists notification and emits `notification:new` to `hr-room`.
+   - `PATCH /api/attendance/corrections/:id/review`: HR review endpoint (`APPROVED` or `REJECTED`).
+   - If approved: Overwrites target attendance punch timestamps, recalculates late/flex metrics, sets `isCorrected: true`, and notifies applicant in `user_${userId}`.
+
+### 10.7 Module 5: Leave Management Quota & Loss of Pay (LOP) Engine
+Implemented across `leave.repository.ts`, `leave.service.ts`, `leave.controller.ts`, and `leave.routes.ts`:
+
+1. **Annual Paid Leave Balance Calculation**:
+   - Default annual quota: `yearlyPaidLeaveQuota = 5` days (fetched from `CompanySettings`).
+   - Query approved leaves in current calendar year (Jan 1 – Dec 31) where `isPaid: true`:
+     $$\text{usedPaidDays} = \sum \text{paidDaysCount}$$
+     $$\text{remainingPaidDays} = \max(0, \text{yearlyPaidLeaveQuota} - \text{usedPaidDays})$$
+     $$\text{totalLossOfPayDays} = \sum \text{lossOfPayDaysCount}$$
+
+2. **Application Duration & Quota Allocation**:
+   - **Half-Day Policy**: `leaveType === "HALF_DAY"` designates post-lunch leave from 1:00 PM to 6:00 PM and counts as exactly $0.5 \text{ days}$.
+   - **Full-Day Policy**: Calendar days difference (inclusive).
+   - **Quota Allocation & LOP Split**:
+     $$\text{paidDaysCount} = \min(\text{remainingPaidDays}, \text{numberOfDays})$$
+     $$\text{lossOfPayDaysCount} = \text{numberOfDays} - \text{paidDaysCount}$$
+     $$\text{isPaid} = (\text{lossOfPayDaysCount} == 0)$$
+   - When an employee exhausts their paid quota (`remainingPaidDays === 0`), `lossOfPayDaysCount = numberOfDays`, and the record is flagged for payroll deduction.
+   - **Conflict Check**: Prevents overlapping pending or approved leave requests.
+
+3. **HR Review & Real-Time Socket Alerts**:
+   - On submission: Emits `notification:new` to `hr-room`.
+   - On review (`APPROVED` or `REJECTED`): Emits `notification:new` to applicant's room `user_${userId}`.
+
+### 10.8 Dedicated Frontend Routes & Component Architecture (`/attendance` & `/leaves`)
+
+1. **Dedicated Route `/attendance` (`frontend/src/app/attendance/page.tsx`)**:
+   - Wrapped inside `DashboardLayout` preserving persistent responsive shell, authentication guard, and active socket.
+   - **`AttendanceView.tsx` Component**:
+     - **Live Digital Clock Widget**: Ticking digital time display (hh:mm:ss AM/PM) synchronized every second.
+     - **Dynamic Punch Card Action**: Green "Punch In" button transforms to pulsing Red "Punch Out" once punched in, switching to "Day Completed" after departure.
+     - **Flexible Shift Status Display**:
+       - *On-Time (<= 09:00 AM)*: Displays emerald status indicating target departure at 6:00 PM.
+       - *Grace Window (09:00 - 09:30 AM)*: Displays teal status card showing flex minutes owed and evening compensated target (e.g. "Arrived at 9:20 AM $\to$ Target departure: 6:20 PM").
+       - *Strict Late (> 09:30 AM)*: Displays amber/rose alert with exact delay duration (e.g. "Late arrival: 9:45 AM - Late by 45 mins").
+     - **`CorrectionModal.tsx`**:
+       - Read-only original punch time display.
+       - 12-hour dropdown clock picker (Hour: 01–12, Minute: 00–59, AM/PM toggle).
+       - Date picker and mandatory reason text area.
+     - **Monthly History Table**: Shows personal logs (Punch In, Punch Out, Duration, Status badges, and "Request Correction" action).
+     - **Workforce Roster & Correction Queue (HR/Admin)**: Date & department filters, daily presence list, and pending correction approvals/rejections.
+
+2. **Dedicated Route `/leaves` (`frontend/src/app/leaves/page.tsx`)**:
+   - Wrapped inside `DashboardLayout`.
+   - **`LeaveManagementView.tsx` Component**:
+     - **Quota Overview Cards**: Yearly Paid Quota (5 Days), Used Paid Leaves, Remaining Paid Balance, and Loss of Pay (LOP) Days taken.
+     - **`ApplyLeaveModal.tsx`**:
+       - Prominent **Loss of Pay (LOP) Warning Banner** rendered when `remainingPaidDays <= 0`: *"Your paid leaves are finished. Any further leave you take will be treated as Unpaid Leave (Loss of Pay - LOP)."*
+       - Duration toggle: `Full Day` vs `Half Day` (post-lunch 1:00 PM to 6:00 PM policy, counting as 0.5 day).
+       - Live quota calculation showing requested days split into Paid and Unpaid LOP.
+       - Mandatory Reason field (*).
+     - **Personal Leave History Table**: Records with status badges (`Approved`, `Pending Review`, `Rejected`), and LOP / Paid count breakdown.
+     - **Workforce Review Queue (HR/Admin)**: Review pending employee applications with Approve / Reject action triggers.
+
+3. **Sidebar Navigation Updates (`frontend/src/components/dashboard/Sidebar.tsx`)**:
+   - Updated `Attendance` navigation item to `/attendance`.
+   - Added dedicated `Leaves` navigation item to `/leaves` with centralized `LeavesIcon` (`EventAvailable`).
+
+4. **Real-Time WebSocket Integration (`frontend/src/context/SocketContext.tsx` & `Topbar.tsx`)**:
+   - Authenticated singleton WebSocket connection listening to `notification:new`.
+   - Automatically invalidates `["notifications"]`, `["attendance"]`, and `["leaves"]` query caches on socket events for real-time synchronization across browser tabs.
+   - Topbar Notification Bell displays real-time unread badge counter, notification dropdown with type-specific iconography and relative timestamps, with direct navigation to `/attendance` or `/leaves`.
+---
+
+## 14. Company Settings Management, Grace Period Mechanics & Attendance Calculation Refinements
+
+### 14.1 Shift Configuration & Grace Period Mechanics
+The system allows HR and Administrator roles to configure the company-wide shift parameters via `/dashboard/settings`.
+
+1. **Shift Timings**:
+   - `shiftStartTime`: Official shift start time (e.g. `09:00`).
+   - `graceWindowEndTime`: Cutoff time for grace arrival (e.g. `09:30`).
+   - `shiftEndTime`: Standard shift end time (e.g. `18:00`).
+   - `standardWorkHoursPerDay`: Standard daily target hours (e.g. `8`).
+   - `lunchStartTime` & `lunchEndTime`: 1-hour lunch break window (e.g. `12:00` - `13:00`).
+   - `yearlyPaidLeaveQuota`: Annual paid leave quota (default: `5`).
+
+2. **Punch-In Late Duration Math**:
+   - **On-Time Arrival ($\text{PunchIn} \le \text{shiftStartTime}$)**:
+     - `isLate = false`
+     - `lateMinutes = 0`
+     - `flexMinutesOwed = 0`
+     - `expectedPunchOut = shiftEndTime` (18:00)
+   - **Grace Flex Window ($\text{shiftStartTime} < \text{PunchIn} \le \text{graceWindowEndTime}$)**:
+     - `isLate = false`
+     - `lateMinutes = 0`
+     - $\text{flexMinutesOwed} = \text{PunchIn} - \text{shiftStartTime}$
+     - $\text{expectedPunchOut} = \text{shiftEndTime} + \text{flexMinutesOwed}$ (e.g., 9:15 AM arrival $\to$ 18:15 PM departure).
+   - **Late Arrival ($\text{PunchIn} > \text{graceWindowEndTime}$)**:
+     - `isLate = true`
+     - $\text{lateMinutes} = \text{PunchIn} - \text{graceWindowEndTime}$ (e.g. 10:09 AM arrival with 09:30 AM cutoff $\to$ **39 mins late**, NOT 70 mins).
+     - $\text{flexMinutesOwed} = \text{graceWindowEndTime} - \text{shiftStartTime}$ (full morning grace offset).
+     - $\text{expectedPunchOut} = \text{shiftEndTime} + \text{flexMinutesOwed}$ (18:30 PM).
+
+3. **Punch-Out Early Departure Math**:
+   - When punching out, if $\text{punchOut} < \text{expectedPunchOut}$:
+     - $\text{earlyLeavingMinutes} = \text{expectedPunchOut} - \text{punchOut}$
+     - If employee arrived at 9:30 AM (expected departure 18:30 PM) and punched out at 18:00 PM, `earlyLeavingMinutes = 30`.
+
+### 14.2 4-Tier Settings Backend API
+- **Model**: `backend/src/models/settings.model.ts` (`CompanySettingsModel`).
+- **Repository**: `backend/src/repositories/settings.repository.ts` (`getSettings`, `updateSettings`).
+- **Controller**: `backend/src/controllers/settings.controller.ts` (`getSettings`, `updateSettings`).
+- **Validation**: `backend/src/types/settings.types.ts` (`updateSettingsSchema` with `HH:mm` regex & range checks).
+- **Routes**: `backend/src/routes/settings.routes.ts` mounted at `/api/settings`:
+  - `GET /api/settings`: Accessible to all authenticated users.
+  - `PUT /api/settings`: Restricted to `ADMIN` and `HR` roles (`authorizeRoles("ADMIN", "HR")`).
+
+### 14.3 Frontend Top-Level Modular Routing & Settings Integration
+All functional modules are structured as clean, first-class top-level routes directly in `frontend/src/app/`, wrapped in `<DashboardLayout>` to preserve persistent responsive sidebar, topbar, and cryptographic session protection:
+
+1. **Top-Level Route Map (`Sidebar.tsx`)**:
+   - **Dashboard**: `/dashboard` (`frontend/src/app/dashboard/page.tsx`)
+   - **Employees**: `/employees` (`frontend/src/app/employees/page.tsx`)
+   - **Attendance**: `/attendance` (`frontend/src/app/attendance/page.tsx`)
+   - **Leaves**: `/leaves` (`frontend/src/app/leaves/page.tsx`)
+   - **Payroll**: `/payroll` (`frontend/src/app/payroll/page.tsx`)
+   - **Reports**: `/reports` (`frontend/src/app/reports/page.tsx`)
+   - **Settings**: `/settings` (`frontend/src/app/settings/page.tsx`)
+
+2. **Dedicated Settings Route (`/settings`)**:
+   - `frontend/src/app/settings/page.tsx` wrapped in `DashboardLayout`.
+   - `SettingsView.tsx`: Office Shift & Grace Window Card, Lunch Break & Hours Card, Leave Policy & Paid Quota Card.
+   - Role-guarded: HR and Admin have full editing capabilities with Reset and Save actions; Employees have read-only view.
+
+3. **Attendance UI Updates (`frontend/src/components/attendance/AttendanceView.tsx`)**:
+   - Dynamic shift timing banner rendering server-configured shift start, shift end, and grace cutoff.
+   - Accurate late alert displaying late minutes counted from the grace window cutoff: *"Late by X mins (grace cutoff was 9:30 AM)"*.
+   - Early departure notification when leaving before expected evening departure: *"Departed early by X mins"*.
+   - Direct shortcut button to `/settings` for HR/Admin.
+
+4. **Leave Management Integration (`frontend/src/components/leaves/LeaveManagementView.tsx`)**:
+   - Dynamic Yearly Paid Leave Quota card reflecting the database-configured quota.
+   - Quick *"Configure Quota"* button linking directly to `/settings` for HR/Admin.
+
+---
+
+## 15. Module 4 (Phase 1): Lean Database Foundation for Payroll, Overtime & Salary Advances
+
+### 15.1 Zero-Redundancy & Strict Normalization Architecture
+Module 4 adheres strictly to a zero-redundancy schema model. Employee attributes (`username`, `email`, `department`, `designation`) reside exclusively in the `User` collection. Transaction models (`OvertimeRequest`, `SalaryAdvance`) maintain foreign key references (`ref: "User"`).
+
+### 15.2 Overtime Request Schema (`backend/src/models/overtime.model.ts`)
+- **Collection**: `overtime_requests`
+- **Fields**:
+  - `userId`: `Types.ObjectId` (`ref: "User"`, required, indexed)
+  - `date`: `Date` (normalized UTC midnight of overtime shift)
+  - `startTime`: `string` ("HH:mm" format, e.g. "18:00")
+  - `endTime`: `string` ("HH:mm" format, e.g. "20:30")
+  - `hours`: `number` (computed overtime hours, min: 0.1)
+  - `taskDescription`: `string` (mandatory work details)
+  - `status`: `"PENDING" | "APPROVED" | "REJECTED"` (default: "PENDING")
+  - `reviewedBy`: `Types.ObjectId | null` (`ref: "User"`)
+  - `reviewedAt`: `Date | null`
+  - `rejectionReason`: `string | null`
+  - `payrollCycle`: `string | null` ("YYYY-MM" once processed)
+- **Compound Index**: `{ userId: 1, date: 1, status: 1 }`
+
+### 15.3 Salary Advance Schema (`backend/src/models/salaryAdvance.model.ts`)
+- **Collection**: `salary_advances`
+- **Fields**:
+  - `userId`: `Types.ObjectId` (`ref: "User"`, required, indexed)
+  - `date`: `Date` (disbursement date, default: `Date.now`)
+  - `amount`: `number` (INR ₹, min: 1)
+  - `reason`: `string` (mandatory notes/purpose)
+  - `givenBy`: `Types.ObjectId` (`ref: "User"`, HR/Admin issuer)
+  - `monthYear`: `string` (billing cycle target, e.g. "2026-11")
+  - `isDeducted`: `boolean` (default: `false`, marked `true` once payroll is finalized)
+  - `payrollId`: `Types.ObjectId | null` (`ref: "Payroll"`)
+- **Compound Index**: `{ userId: 1, monthYear: 1, isDeducted: 1 }`
+
+### 15.4 Payroll Schema with Immutability Snapshot (`backend/src/models/payroll.model.ts`)
+- **Collection**: `payrolls`
+- **Fields**:
+  - `userId`: `Types.ObjectId` (`ref: "User"`, required, indexed)
+  - `monthYear`: `string` ("YYYY-MM", e.g. "2026-11", required)
+  - `status`: `"DRAFT" | "FINALIZED"` (default: "DRAFT")
+  - **Financial Snapshot Fields**:
+    - `baseSalary`: `number` (monthly salary snapshot)
+    - `perDayRate`: `number` (`baseSalary / 26.0`)
+    - `hourlyRate`: `number` (`perDayRate / 8.0`)
+    - `workingDaysStandard`: `number` (default: 26)
+    - `lopDaysCount`: `number` (sum of unpaid leave days in month)
+    - `lopDeduction`: `number` (`lopDaysCount * perDayRate`)
+    - `overtimeHours`: `number` (sum of certified OT hours in month)
+    - `overtimeHourlyRate`: `number` (`hourlyRate * 1.5`)
+    - `overtimePay`: `number` (`overtimeHours * overtimeHourlyRate`)
+    - `advanceDeduction`: `number` (sum of advances deducted for this cycle)
+    - `bonus`: `number` (manual incentives/bonus, default: 0)
+    - `otherDeductions`: `number` (taxes/penalties, default: 0)
+    - `netSalary`: `number` (final computed net payout)
+  - **Audit Fields**:
+    - `generatedBy`: `Types.ObjectId` (`ref: "User"`, required)
+    - `finalizedBy`: `Types.ObjectId | null` (`ref: "User"`)
+    - `finalizedAt`: `Date | null`
+    - `notes`: `string`
+- **Compound Unique Index**: `{ userId: 1, monthYear: 1 }` (unique constraint prevents duplicate monthly runs).
+
+### 15.5 Real-Time Notification Expansions (`backend/src/models/notification.model.ts`)
+The `NotificationType` enum is expanded to include Module 4 event triggers:
+- `"OVERTIME_REQUESTED"`
+- `"OVERTIME_APPROVED"`
+- `"OVERTIME_REJECTED"`
+- `"ADVANCE_LOGGED"`
+- `"PAYROLL_FINALIZED"`
+
+### 15.6 Overtime Request Workflow Backend (`/api/overtime`)
+1. **Repository Layer (`backend/src/repositories/overtime.repository.ts`)**:
+   - `createOvertimeRequest`: Persists new OT document.
+   - `findMyOvertime`: Fetches employee's personal overtime log with pagination.
+   - `findAllOvertime`: HR review list populated with applicant name, department, designation, and reviewer.
+   - `findOvertimeById`: Queries document by ID.
+   - `updateOvertimeReview`: Updates review state (`APPROVED` or `REJECTED`), reviewer reference, reviewed timestamp, and optional rejection reason.
+   - `findApprovedOvertimeByDateRange`: Queries approved overtime documents within a billing month range for monthly payroll generation.
+2. **Service Layer (`backend/src/services/overtime.service.ts`)**:
+   - `submitOvertime`: Validates `startTime` and `endTime` (HH:mm format), blocks `ADMIN` role from submitting overtime (company owners/approvers), auto-computes duration hours, normalizes work date to midnight UTC, creates document with status `PENDING`, stores notification record, and emits real-time socket event `notification:new` to `hr-room`.
+   - `reviewOvertime`: Validates pending state, sets status to `APPROVED` or `REJECTED`, creates applicant notification record, and emits socket event `notification:new` to applicant's private room `user_${userId}`.
+3. **Controller & Endpoints (`backend/src/controllers/overtime.controller.ts` & `backend/src/routes/overtime.routes.ts`)**:
+   - `POST /api/overtime`: Authenticated employee self-service submission. Validated via `createOvertimeSchema`.
+   - `GET /api/overtime/my`: Authenticated employee personal overtime history.
+   - `GET /api/overtime/all`: Protected (`ADMIN`, `HR`). Filters by `status`, `startDate`, `endDate`, `userId`.
+   - `PATCH /api/overtime/:id/review`: Protected (`ADMIN`, `HR`). Validated via `reviewOvertimeSchema`.
+
+### 15.7 Salary Advance Management Backend (`/api/advances`)
+1. **Repository Layer (`backend/src/repositories/salaryAdvance.repository.ts`)**:
+   - `createSalaryAdvance`: Persists advance record.
+   - `findAdvancesByUser`: Retrieves employee's advance history.
+   - `findAllAdvances`: HR monthly advances ledger populated with recipient details (`username`, `email`, `department`, `monthlySalary`) and issuer details.
+   - `findUndeductedAdvancesForUser`: Aggregates active advances for an employee during payroll cycle calculations.
+   - `markAdvancesAsDeducted`: Batch-marks advance documents as `isDeducted = true` and binds them to `payrollId` upon payroll finalization.
+2. **Service Layer (`backend/src/services/salaryAdvance.service.ts`)**:
+   - `logAdvance`: Validates recipient existence via `EmployeeRepository.findEmployeeById`, enforces that advances cannot be issued to `ADMIN` accounts (company owners), validates positive amount, saves advance document, stores recipient notification record, and emits real-time socket event `notification:new` to `user_${recipientId}`.
+   - `getAllAdvances`: Fetches paginated ledger for HR with billing cycle filters.
+   - `getMyAdvances`: Returns personal advance records for the authenticated employee.
+3. **Controller & Endpoints (`backend/src/controllers/salaryAdvance.controller.ts` & `backend/src/routes/salaryAdvance.routes.ts`)**:
+   - `POST /api/advances`: Protected (`ADMIN`, `HR`). Validated via `createAdvanceSchema`.
+   - `GET /api/advances`: Protected (`ADMIN`, `HR`). Paginated query with `monthYear`, `isDeducted`, and `userId` filters.
+   - `GET /api/advances/my`: Authenticated employee self-service advance ledger.
+
+### 15.8 Core 26-Day Divisor Payroll Calculation Engine (`/api/payroll`)
+1. **Repository Layer (`backend/src/repositories/payroll.repository.ts`)**:
+   - `upsertDraftPayroll`: Creates or updates a draft payroll document for an employee for a target `monthYear`.
+   - `findPayrollByMonth`: Retrieves all payroll records for `monthYear` (with optional `status` filter), populated with employee profile and audit details.
+   - `findPayrollById`: Fetches payroll record by ID with full populated user details.
+   - `updatePayrollAdjustment`: Updates manual bonus, other deductions, net salary, and notes on draft payroll records.
+   - `finalizePayrollMonth`: Transitions all `DRAFT` records for a month to `FINALIZED`, stamping `finalizedBy` and `finalizedAt`.
+   - `findUserPayslips`: Queries finalized payslips for an employee with pagination.
+2. **Service Layer (`backend/src/services/payroll.service.ts`)**:
+   - `runPayrollDraft`:
+     - Verifies payroll for `monthYear` is not already finalized.
+     - Fetches active employees from `EmployeeRepository`, strictly excluding users with role `ADMIN` (company owners).
+     - Cleans up any existing draft payroll records associated with Admin accounts for `monthYear`.
+     - Calculates per-day rate ($\text{Base Salary} / 26.0$) and hourly rate ($\text{Per-Day Rate} / 8.0$).
+     - Aggregates approved unpaid leave days from `LeaveRepository` and computes LOP deduction ($\text{LOP Days} \times \text{Per-Day Rate}$).
+     - Aggregates approved overtime hours from `OvertimeRepository` and computes OT pay ($\text{OT Hours} \times (\text{Hourly Rate} \times 1.5)$).
+     - Aggregates undeducted in-month advances from `SalaryAdvanceRepository`.
+     - Preserves existing manual bonuses/deductions if draft recalculation occurs.
+     - Computes Net Salary: $\text{Base} + \text{OT Pay} - \text{LOP} - \text{Advance} + \text{Bonus} - \text{Other Deductions}$.
+     - Upserts each employee record with status `"DRAFT"`.
+   - `updatePayrollAdjustment`: Allows HR/Admin to adjust bonus, other deductions, and notes on `"DRAFT"` records with live net salary recalculation. Throws error if record is already `"FINALIZED"`.
+   - `finalizePayroll`:
+     - Locks all draft records for `monthYear` into `"FINALIZED"`.
+     - Batch-marks all linked advances as `isDeducted = true` and binds them to `payrollId`.
+     - Creates notification record in MongoDB and emits real-time WebSocket event `notification:new` to each employee's room (`user_${userId}`).
+   - `getPayslipDetails`: Enforces security guards: employees can only view their own finalized payslips.
+3. **Controller & Endpoints (`backend/src/controllers/payroll.controller.ts` & `backend/src/routes/payroll.routes.ts`)**:
+   - `POST /api/payroll/run`: Protected (`ADMIN`, `HR`). Generates or updates draft payroll for `monthYear` (Validated via `runPayrollSchema`).
+   - `GET /api/payroll`: Protected (`ADMIN`, `HR`). Query workforce payroll records by `monthYear` and `status`.
+   - `PATCH /api/payroll/:id/adjust`: Protected (`ADMIN`, `HR`). Adjusts bonus and other deductions (Validated via `adjustPayrollSchema`).
+   - `POST /api/payroll/finalize`: Protected (`ADMIN`, `HR`). Locks payroll run and triggers notifications (Validated via `finalizePayrollSchema`).
+   - `GET /api/payroll/my-payslips`: Authenticated employee paginated payslip history.
+   - `GET /api/payroll/:id/payslip`: Authenticated employee / Admin payslip detail structure.
+
+### 15.9 Module 4 Frontend Data Layer: Types, Services & Query Hooks
+1. **Shared TypeScript Interfaces (`frontend/src/types/payroll.types.ts`)**:
+   - `EmployeeSummary`: Lean normalized user reference (`_id`, `username`, `email`, `department`, `designation`, `phone`, `monthlySalary`).
+   - Overtime DTOs: `OvertimeStatus`, `OvertimeRequestData`, `CreateOvertimeInput`, `ReviewOvertimeInput`, `OvertimeListResponse`.
+   - Salary Advance DTOs: `SalaryAdvanceData`, `CreateAdvanceInput`, `AdvanceListResponse`.
+   - Payroll & Payslip DTOs: `PayrollStatus`, `PayrollData` (financial snapshot + audit trail), `AdjustPayrollInput`, `PayrollListResponse`, `UserPayslipsResponse`, `FinalizePayrollResponse`.
+2. **API Client Services**:
+   - `frontend/src/services/overtime.service.ts`: `submitOvertimeAPI`, `getMyOvertimeAPI`, `getAllOvertimeAPI`, `reviewOvertimeAPI`.
+   - `frontend/src/services/advance.service.ts`: `logAdvanceAPI`, `getAdvancesAPI`, `getMyAdvancesAPI`.
+   - `frontend/src/services/payroll.service.ts`: `runPayrollDraftAPI`, `getPayrollRecordsAPI`, `adjustPayrollAPI`, `finalizePayrollAPI`, `getMyPayslipsAPI`, `getPayslipDetailsAPI`.
+3. **TanStack Query Custom Hooks**:
+   - `frontend/src/hooks/queries/useOvertime.ts`:
+     - `useMyOvertimeQuery(page, limit)`
+     - `useAllOvertimeQuery(filters, enabled)`
+     - `useSubmitOvertimeMutation()` (invalidates `["overtime"]`)
+     - `useReviewOvertimeMutation()` (invalidates `["overtime"]`)
+   - `frontend/src/hooks/queries/useAdvances.ts`:
+     - `useAdvancesQuery(filters, enabled)`
+     - `useMyAdvancesQuery(page, limit)`
+     - `useLogAdvanceMutation()` (invalidates `["advances"]`)
+   - `frontend/src/hooks/queries/usePayroll.ts`:
+     - `usePayrollRecordsQuery(monthYear, status, enabled)`
+     - `useMyPayslipsQuery(page, limit)`
+     - `usePayslipDetailsQuery(id, enabled)`
+     - `useRunPayrollMutation()` (invalidates `["payroll"]`)
+     - `useAdjustPayrollMutation()` (invalidates `["payroll"]`)
+     - `useFinalizePayrollMutation()` (invalidates `["payroll"]`, `["advances"]`)
+
+### 15.10 Module 4 Full-Stack Frontend UI/UX Architecture (`/payroll`)
+1. **Dedicated Top-Level Route Shell (`frontend/src/app/payroll/page.tsx`)**:
+   - Registered under the first-class application route `/payroll`.
+   - Wrapped inside `<DashboardLayout>`, preserving the responsive collapsible sidebar, glassmorphic topbar, notification badge, and persistent WebSocket connections.
+2. **Main Coordinator View (`frontend/src/components/payroll/PayrollView.tsx`)**:
+   - Inspects `currentUser.role` to conditionally configure navigation tabs.
+   - For `ADMIN`: Displays "Payroll Processing" (default), "Overtime Approvals", and "Salary Advances". Company owners/executives manage workforce compensation and do not receive employee payslips.
+   - For `HR`: Displays "Payroll Processing" (default), "Overtime Approvals", "Salary Advances", and "My Payslips".
+   - For `EMPLOYEE`: Displays "My Payslips" (default), "My Overtime", and "My Advances".
+   - Styled with Tailwind theme colors (Teal `#008272`, Slate backgrounds, pill active states).
+3. **HR / Admin Payroll Run Table (`frontend/src/components/payroll/PayrollRunTable.tsx`)**:
+   - Month-Year selector dropdown synced to reactive TanStack Query.
+   - "Calculate Draft Payroll" action triggering recalculation across all active employees.
+   - Responsive ledger displaying: Employee details (username, role, department), Base Salary, LOP Days & Deduction, OT Hours & Pay, Advance Deduction, Bonus & Adjustments with quick-edit button, Net Take-Home Salary, and Status Badges (`DRAFT` vs `FINALIZED`).
+   - "Finalize & Lock Payroll" workflow with confirmation dialog, locking the pay cycle, marking advances as deducted, and dispatching real-time notifications to employees.
+4. **Payroll Adjustment Modal (`frontend/src/components/payroll/PayrollAdjustmentModal.tsx`)**:
+   - Allows HR / Admin to modify discretionary Bonus (₹) and Other Deductions (₹) with explanatory notes prior to cycle finalization.
+   - Live net salary calculation preview before persisting changes.
+5. **Overtime Management & Approvals (`frontend/src/components/payroll/OvertimeManagementTab.tsx`)**:
+   - For HR / Admin: Displays pending approvals queue cards with applicant details, overtime hours, start/end timestamps, work description, and one-click "Approve" / "Reject" (with optional reason prompt) actions. Includes full workforce overtime history with status filters. "Request Overtime" button is hidden for `ADMIN` accounts.
+   - For Employees: Displays self-service overtime application button and personal overtime log history.
+6. **Overtime Request Modal (`frontend/src/components/payroll/OvertimeRequestModal.tsx`)**:
+   - Date picker, start time ("HH:mm"), and end time ("HH:mm").
+   - Automatically computes overtime duration in hours with validation (end time must be after start time).
+   - Mandatory work/task description field.
+7. **Salary Advance Management (`frontend/src/components/payroll/SalaryAdvanceTab.tsx`)**:
+   - For HR / Admin: "Log Salary Advance" button, month-year selector, and workforce advances ledger showing deduction status (`Pending in Payroll` vs `Deducted`).
+   - For Employees: Personal salary advance records and deduction tracking.
+8. **Log Advance Modal (`frontend/src/components/payroll/LogAdvanceModal.tsx`)**:
+   - Active employee dropdown selector (strictly filtering out `ADMIN` accounts), positive INR amount, target billing cycle (`YYYY-MM`), and reason/notes.
+9. **Employee Payslips Tab (`frontend/src/components/payroll/EmployeePayslipsTab.tsx`)**:
+   - Responsive cards grid for all finalized monthly payslips.
+   - Visual badges for pay period, Net Take-Home Salary, Gross Earnings, and Total Deductions.
+   - One-click "View / Print Payslip" action opening the official payslip modal.
+10. **Printable Official Payslip Statement (`frontend/src/components/payroll/PayslipModal.tsx`)**:
+    - Official corporate statement format designed for review, physical printing, or PDF export (`window.print()` / print stylesheets).
+    - Headers: Company branding, Pay Period, Payslip Reference ID, Generation Date.
+    - Employee Profile: Username, Employee ID, Department, Designation, Joining Date.
+    - Two-column financial balance sheet:
+      - **Earnings**: Base Monthly Salary, Approved Overtime Pay, Performance Bonus, Total Gross Earnings.
+      - **Deductions**: Loss of Pay (LOP) Days & Deduction, Salary Advance Recovery, Other Deductions, Total Deductions.
+    - Net Pay Callout: Prominent take-home salary badge with statutory 26-day calculation explanation note.
+
+### 15.11 Real-Time WebSocket Notification Toast Architecture & Verification Audit
+1. **Dynamic Cache Invalidation (`frontend/src/context/SocketContext.tsx`)**:
+   - Subscribes to `notification:new` from the backend gateway.
+   - Instantly invalidates TanStack Query keys across all operational domains:
+     - `NOTIFICATIONS_QUERY_KEY` (bell icon badge count and dropdown list)
+     - `["attendance"]` (workforce logs)
+     - `["leaves"]` (leave balance and review queue)
+     - `["overtime"]` (pending approvals queue and self-service ledger)
+     - `["advances"]` (advances table and deduction status)
+     - `["payroll"]` (monthly draft and finalized records)
+2. **Global Real-Time Toast Alert (`frontend/src/components/dashboard/Topbar.tsx`)**:
+   - Listens to `latestNotification` from `useSocket()`.
+   - Renders a floating, high-visibility toast banner at `top-4 right-4 z-50` with slide-in animation.
+   - Distinct contextual icons for each notification type:
+     - `OVERTIME_REQUESTED`: Amber `AccessTimeIcon`
+     - `OVERTIME_APPROVED`: Emerald `CheckCircleIcon`
+     - `OVERTIME_REJECTED`: Rose `CancelIcon`
+     - `ADVANCE_LOGGED`: Indigo `PaymentsIcon`
+     - `PAYROLL_FINALIZED`: Teal `ReceiptLongIcon`
+   - Auto-dismiss timer (6 seconds) with manual dismissal ('X') and one-click deep navigation to relevant view.
+3. **End-to-End Verification Audit Summary (`backend/src/scripts/testModule4E2E.ts`)**:
+   - **TypeScript Strictness**: `npx tsc --noEmit` on backend and frontend executed with **0 errors**.
+   - **Zero Redundancy**: 100% normalized `ref: "User"` references across `OvertimeRequestModel`, `SalaryAdvanceModel`, and `PayrollModel`. Zero redundant profile attributes stored.
+   - **Statutory 26-Day Divisor Math**: Validated with zero rounding errors:
+     $$\text{Per-Day Rate} = \frac{\text{Base Monthly Salary}}{26.0}$$
+     $$\text{Hourly Wage Rate} = \frac{\text{Per-Day Rate}}{8.0} = \frac{\text{Base Monthly Salary}}{208.0}$$
+     $$\text{Overtime Hourly Rate} = \text{Hourly Rate} \times 1.5$$
+     $$\text{Overtime Pay} = \text{Approved OT Hours} \times \text{Overtime Hourly Rate}$$
+     $$\text{LOP Deduction} = \text{Loss of Pay Days} \times \text{Per-Day Rate}$$
+     $$\text{Net Salary} = \text{Base} + \text{OT Pay} + \text{Bonus} - \text{LOP Deduction} - \text{Advance Deduction} - \text{Other Deductions}$$
+   - **Socket.io Event Dispatch**:
+     - Employee OT submit $\to$ Emits `notification:new` to `hr-room`.
+     - HR OT approve/reject $\to$ Emits `notification:new` to `user_${applicantId}`.
+     - HR log advance $\to$ Emits `notification:new` to `user_${recipientId}`.
+     - HR finalize payroll $\to$ Emits `notification:new` to all active employee rooms and marks advances as deducted (`isDeducted = true`).
 
 ---
 

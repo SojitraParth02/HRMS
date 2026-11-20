@@ -1,30 +1,50 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useLoginMutation } from "../../hooks/queries/useAuth";
 
 const LOGO_URL: string =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuDATGA6yBzz_51wVfA5QzZh2eJ7oZPMr7mMn4wcSRug1EkBGZ0luT29lZkShR-tGvfCZGSZ0cXD54xFTfO_922bNqNKp8i6kdVR9fN1VAzWic6pakZEK0okN_eee0yH-fxJoSK2G3m71JDjW26Wgag-QJ_gxHpFvtDm7NKvds5FaqS8t8o7gy4emv882feWPOfKvdvW9FWHZtH6AP9i-8QHaUfIkaOk6iCH0cvobUJdErrB9Yk1eh8M";
 
 export const LoginForm: React.FC = () => {
+  const router = useRouter();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const loginMutation = useLoginMutation();
+  const isLoggingIn: boolean = isSubmitting || loginMutation.isPending;
+
+  // Prefetch dashboard so navigation after login is instantaneous
+  useEffect(() => {
+    router.prefetch("/dashboard");
+    router.prefetch("/employees");
+  }, [router]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
-    if (!email || !password || loginMutation.isPending) {
+    if (!email || !password || isLoggingIn) {
       return;
     }
 
-    loginMutation.mutate({
-      email: email.trim(),
-      password,
-    });
+    // Set submitting immediately on the synchronous click event for 0ms instant UI feedback
+    setIsSubmitting(true);
+
+    loginMutation.mutate(
+      {
+        email: email.trim(),
+        password,
+      },
+      {
+        onError: () => {
+          setIsSubmitting(false);
+        },
+      }
+    );
   };
 
   const errorMessage: string =
@@ -34,12 +54,12 @@ export const LoginForm: React.FC = () => {
 
   return (
     <main
-      className="w-full h-screen overflow-hidden select-none bg-white grid grid-cols-1 lg:grid-cols-12"
+      className="w-full min-h-screen lg:h-screen lg:overflow-hidden select-none bg-white flex flex-col lg:grid lg:grid-cols-12"
       data-purpose="login-card-container"
     >
-      {/* BEGIN: LeftBrandingPanel */}
+      {/* BEGIN: LeftBrandingPanel (Hidden on mobile screens, shown only on desktop) */}
       <section
-        className="lg:col-span-6 relative flex flex-col justify-between p-5 sm:p-7 xl:p-10 h-full overflow-hidden bg-[#eefaf7]"
+        className="hidden lg:flex lg:col-span-6 relative flex-col justify-between p-5 sm:p-7 xl:p-10 h-full overflow-hidden bg-[#eefaf7]"
         data-purpose="marketing-showcase"
       >
         {/* Background Ambient Shapes */}
@@ -281,7 +301,7 @@ export const LoginForm: React.FC = () => {
 
       {/* BEGIN: RightAuthPanel */}
       <section
-        className="lg:col-span-6 bg-white px-6 sm:px-10 xl:px-14 py-4 sm:py-6 xl:py-8 h-full flex flex-col justify-between overflow-hidden"
+        className="w-full flex-1 lg:col-span-6 bg-white px-5 sm:px-10 xl:px-14 py-6 sm:py-8 h-full flex flex-col justify-between overflow-y-auto"
         data-purpose="login-form-container"
       >
         {/* Centered Content Container */}
@@ -467,10 +487,10 @@ export const LoginForm: React.FC = () => {
             {/* Login Primary Submit Button */}
             <button
               type="submit"
-              disabled={loginMutation.isPending}
+              disabled={isLoggingIn}
               className="w-full mt-2 py-2.5 xl:py-3 px-4 bg-[#005a52] hover:bg-[#004942] active:bg-[#003d37] disabled:opacity-70 disabled:cursor-not-allowed text-white font-semibold rounded-lg xl:rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-teal-900/10 hover:shadow-md transition duration-150 cursor-pointer"
             >
-              {loginMutation.isPending ? (
+              {isLoggingIn ? (
                 <>
                   <svg
                     className="animate-spin -ml-1 mr-1.5 h-4 w-4 text-white"

@@ -26,7 +26,7 @@ export const useLoginMutation = (): UseMutationResult<
     onSuccess: (response: LoginResponse): void => {
       const { user, token } = response.data;
       dispatch(setCredentials({ user, token }));
-      router.push("/dashboard");
+      router.replace("/dashboard");
     },
   });
 };

@@ -4,7 +4,7 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import { adminRepository, AdminRepository } from "../repositories/admin.repository";
 import { IUserDocument } from "../models/user.model";
 import { IJwtPayload, ILoginResponse } from "../types/auth.types";
-import { AuthenticationError } from "../utils/errors";
+import { AuthenticationError, ForbiddenError } from "../utils/errors";
 
 export class AuthService {
   private readonly repository: AdminRepository;
@@ -24,6 +24,12 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new AuthenticationError("Invalid email or password.");
+    }
+
+    if (admin.status === "INACTIVE") {
+      throw new ForbiddenError(
+        "Your account has been deactivated. Please contact HR or an administrator."
+      );
     }
 
     const sessionId: string = crypto.randomUUID();
@@ -62,14 +68,18 @@ export class AuthService {
     };
   }
 
-  public async validateAdminSessionService(id: string, sessionId: string): Promise<boolean> {
-    const admin: IUserDocument | null = await this.repository.findAdminById(id);
+  public async validateUserSessionService(id: string, sessionId: string): Promise<boolean> {
+    const user: IUserDocument | null = await this.repository.findAdminById(id);
 
-    if (!admin) {
+    if (!user) {
       return false;
     }
 
-    return admin.sessionId === sessionId;
+    return user.sessionId === sessionId;
+  }
+
+  public async validateAdminSessionService(id: string, sessionId: string): Promise<boolean> {
+    return this.validateUserSessionService(id, sessionId);
   }
 }
 
