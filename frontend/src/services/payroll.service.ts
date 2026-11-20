@@ -6,6 +6,9 @@ import {
   PayrollListResponse,
   UserPayslipsResponse,
   FinalizePayrollResponse,
+  MarkPaidInput,
+  MarkMonthPaidInput,
+  MarkMonthPaidResponse,
 } from "../types/payroll.types";
 
 export const runPayrollDraftAPI = async (
@@ -76,4 +79,27 @@ export const getPayslipDetailsAPI = async (
     data: { payslip: PayrollData };
   }>(`/api/payroll/${id}/payslip`);
   return response.data.data.payslip;
+};
+
+export const markPayrollPaidAPI = async (
+  id: string,
+  payload: MarkPaidInput
+): Promise<PayrollData> => {
+  const response = await apiClient.patch<{
+    status: string;
+    message: string;
+    data: { payroll: PayrollData };
+  }>(`/api/payroll/${id}/pay`, payload);
+  return response.data.data.payroll;
+};
+
+export const markMonthPayrollPaidAPI = async (
+  payload: MarkMonthPaidInput
+): Promise<MarkMonthPaidResponse> => {
+  const response = await apiClient.post<{
+    status: string;
+    message: string;
+    data: MarkMonthPaidResponse;
+  }>("/api/payroll/pay-month", payload);
+  return response.data.data;
 };

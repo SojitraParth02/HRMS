@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { attendanceController } from "../controllers/attendance.controller";
 import { verifyToken, authorizeRoles } from "../middleware/auth.middleware";
 import { validateBody } from "../middleware/validate.middleware";
@@ -6,6 +7,11 @@ import {
   createCorrectionSchema,
   reviewCorrectionSchema,
 } from "../types/attendance.types";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
 
 const attendanceRouter: Router = Router();
 
@@ -43,6 +49,20 @@ attendanceRouter.patch(
   authorizeRoles("ADMIN", "HR"),
   validateBody(reviewCorrectionSchema),
   attendanceController.reviewCorrection
+);
+
+// Biometric CSV Import Endpoints (ADMIN, HR only)
+attendanceRouter.post(
+  "/import-csv",
+  authorizeRoles("ADMIN", "HR"),
+  upload.single("file"),
+  attendanceController.importBiometricCSV
+);
+
+attendanceRouter.get(
+  "/import-history",
+  authorizeRoles("ADMIN", "HR"),
+  attendanceController.getImportHistory
 );
 
 export default attendanceRouter;

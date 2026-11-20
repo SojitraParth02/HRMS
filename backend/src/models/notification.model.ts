@@ -11,7 +11,8 @@ export type NotificationType =
   | "OVERTIME_APPROVED"
   | "OVERTIME_REJECTED"
   | "ADVANCE_LOGGED"
-  | "PAYROLL_FINALIZED";
+  | "PAYROLL_FINALIZED"
+  | "SALARY_DISBURSED";
 
 export const NOTIFICATION_TYPES: NotificationType[] = [
   "LEAVE_APPLIED",
@@ -25,6 +26,7 @@ export const NOTIFICATION_TYPES: NotificationType[] = [
   "OVERTIME_REJECTED",
   "ADVANCE_LOGGED",
   "PAYROLL_FINALIZED",
+  "SALARY_DISBURSED",
 ];
 
 export interface INotification {

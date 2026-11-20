@@ -3,7 +3,7 @@
 
 ---
 
-- **Document Version**: `0.19.0-module4-verified`
+- **Document Version**: `0.20.0-comprehensive-system-audit`
 - **Living Status**: `Active Baseline Specification`
 - **Operating Environments**: Cross-Platform Desktop (Windows / macOS via Chromium/Electron Runtime), Web Client
 - **Author**: Principal Software Architect & Full-Stack Core Team
@@ -99,8 +99,14 @@ flowchart TB
             subgraph DashboardShell["Dashboard Layout (src/app/dashboard/layout.tsx)"]
                 SidebarContext["SidebarProvider (src/context/SidebarContext.tsx)"]
                 Sidebar["Sidebar Component (src/components/dashboard/Sidebar.tsx)"]
-                Topbar["Topbar Component (src/components/dashboard/Topbar.tsx)"]
+                Topbar["Topbar Component (src/components/dashboard/Topbar.tsx)\n(Notifications Dropdown & Real-Time Toasts)"]
                 DashboardPage["Dashboard Overview (src/app/dashboard/page.tsx)"]
+                EmployeesPage["Employees Directory (src/app/employees/page.tsx)"]
+                AttendancePage["Attendance Tracker (src/app/attendance/page.tsx)"]
+                LeavesPage["Leave Management (src/app/leaves/page.tsx)"]
+                PayrollPage["Payroll Engine (src/app/payroll/page.tsx)"]
+                ReportsPage["Workforce Reports (src/app/reports/page.tsx)"]
+                SettingsPage["Shift & Leave Settings (src/app/settings/page.tsx)"]
             end
         end
 
@@ -110,26 +116,23 @@ flowchart TB
     subgraph BackendLayer["Backend REST API Platform (Express on Port 5000)"]
         direction TB
         Server["Server Initialization (src/server.ts)\n(CORS, express.json, Port 5000)"]
+        SocketGateway["WebSocket Gateway (src/socket/index.ts)\n(Socket.io Engine & User/HR Rooms)"]
         
-        subgraph AuthFlow["Auth Domain 4-Tier Flow"]
-            AuthRouter["Auth Router (src/routes/auth.routes.ts)"]
-            AuthMiddleware["Auth Middleware (src/middleware/auth.middleware.ts)\n(verifyToken & Session Check)"]
-            AuthController["Auth Controller (src/controllers/auth.controller.ts)"]
-            AuthService["Auth Service (src/services/auth.service.ts)\n(bcrypt.compare, sessionId generation, jwt.sign)"]
-            AdminRepository["Admin Repository (src/repositories/admin.repository.ts)\n(Mongoose Queries: findOne, findByIdAndUpdate)"]
-        end
-
-        subgraph EmployeeFlow["Employee Domain 4-Tier Flow"]
-            EmployeeRouter["Employee Router (src/routes/employee.routes.ts)"]
-            RBACMiddleware["RBAC & Validation Middleware\n(verifyToken, authorizeRoles, validateBody)"]
-            EmployeeController["Employee Controller (src/controllers/employee.controller.ts)"]
-            EmployeeService["Employee Service (src/services/employee.service.ts)\n(Conflict check, HR barriers, bcrypt.hash)"]
-            EmployeeRepository["Employee Repository (src/repositories/employee.repository.ts)\n(Mongoose Queries: create, findOne, find)"]
+        subgraph DomainTiers["4-Tier Domain Flows"]
+            AuthFlow["Auth Tier (/api/auth)"]
+            EmployeeFlow["Employee Tier (/api/employees)"]
+            AttendanceFlow["Attendance Tier (/api/attendance)"]
+            LeaveFlow["Leave Tier (/api/leaves)"]
+            OvertimeFlow["Overtime Tier (/api/overtime)"]
+            AdvanceFlow["Salary Advance Tier (/api/advances)"]
+            PayrollFlow["Payroll Tier (/api/payroll)"]
+            SettingsFlow["Settings Tier (/api/settings)"]
+            NotifFlow["Notification Tier (/api/notifications)"]
         end
     end
 
     subgraph DatabaseCluster["Persistence Storage Layer"]
-        MongoDB[("MongoDB 7.0 Engine\n(Database: 'hrms' | Collection: 'users')")]
+        MongoDB[("MongoDB 7.0 Engine\n(Collections: users, attendance, leaves, overtime, advances, payroll, settings, notifications)")]
     end
 
     AppProviders --> RouteTree
@@ -1053,10 +1056,12 @@ The `NotificationType` enum is expanded to include Module 4 event triggers:
 ### 15.8 Core 26-Day Divisor Payroll Calculation Engine (`/api/payroll`)
 1. **Repository Layer (`backend/src/repositories/payroll.repository.ts`)**:
    - `upsertDraftPayroll`: Creates or updates a draft payroll document for an employee for a target `monthYear`.
-   - `findPayrollByMonth`: Retrieves all payroll records for `monthYear` (with optional `status` filter), populated with employee profile and audit details.
-   - `findPayrollById`: Fetches payroll record by ID with full populated user details.
+   - `findPayrollByMonth`: Retrieves all payroll records for `monthYear` (with optional `status` filter), populated with employee profile, generatedBy, finalizedBy, and paidBy audit details.
+   - `findPayrollById`: Fetches payroll record by ID with full populated user and audit details.
    - `updatePayrollAdjustment`: Updates manual bonus, other deductions, net salary, and notes on draft payroll records.
    - `finalizePayrollMonth`: Transitions all `DRAFT` records for a month to `FINALIZED`, stamping `finalizedBy` and `finalizedAt`.
+   - `markRecordPaid`: Sets `isPaid = true`, stamps `paidBy`, `paidAt`, `paymentMethod`, and optional `transactionReference` on a specific payroll record.
+   - `markMonthPaid`: Batch-updates all unpaid finalized records for `monthYear` (`{ monthYear, status: "FINALIZED", isPaid: false }`) with disbursement metadata, returning modified count.
    - `findUserPayslips`: Queries finalized payslips for an employee with pagination.
 2. **Service Layer (`backend/src/services/payroll.service.ts`)**:
    - `runPayrollDraft`:
@@ -1075,12 +1080,23 @@ The `NotificationType` enum is expanded to include Module 4 event triggers:
      - Locks all draft records for `monthYear` into `"FINALIZED"`.
      - Batch-marks all linked advances as `isDeducted = true` and binds them to `payrollId`.
      - Creates notification record in MongoDB and emits real-time WebSocket event `notification:new` to each employee's room (`user_${userId}`).
+   - `markRecordPaid`:
+     - Enforces state machine: only `FINALIZED` records can be marked as paid (throws `BadRequestError` on `DRAFT`).
+     - Idempotency guard: blocks re-disbursing already paid records (`isPaid === true`).
+     - Stamped with `paidBy`, `paidAt`, `paymentMethod` ("BANK_TRANSFER" | "UPI" | "CHEQUE" | "CASH"), and optional UTR `transactionReference`.
+     - Creates a DB notification (`SALARY_DISBURSED`) and dispatches real-time Socket.io event `notification:new` to the employee (`user_${userId}`).
+   - `markMonthPaid`:
+     - Batch-disburses all unpaid finalized records for `monthYear`.
+     - Safely ignores already paid records to prevent double payouts.
+     - Sends individual real-time `SALARY_DISBURSED` notifications to all disbursed employees.
    - `getPayslipDetails`: Enforces security guards: employees can only view their own finalized payslips.
 3. **Controller & Endpoints (`backend/src/controllers/payroll.controller.ts` & `backend/src/routes/payroll.routes.ts`)**:
    - `POST /api/payroll/run`: Protected (`ADMIN`, `HR`). Generates or updates draft payroll for `monthYear` (Validated via `runPayrollSchema`).
    - `GET /api/payroll`: Protected (`ADMIN`, `HR`). Query workforce payroll records by `monthYear` and `status`.
    - `PATCH /api/payroll/:id/adjust`: Protected (`ADMIN`, `HR`). Adjusts bonus and other deductions (Validated via `adjustPayrollSchema`).
    - `POST /api/payroll/finalize`: Protected (`ADMIN`, `HR`). Locks payroll run and triggers notifications (Validated via `finalizePayrollSchema`).
+   - `PATCH /api/payroll/:id/pay`: Protected (`ADMIN`, `HR`). Marks an individual employee's salary as disbursed and paid (Validated via `markPaidSchema`).
+   - `POST /api/payroll/pay-month`: Protected (`ADMIN`, `HR`). Batch-disburses all unpaid finalized salaries for `monthYear` (Validated via `markMonthPaidSchema`).
    - `GET /api/payroll/my-payslips`: Authenticated employee paginated payslip history.
    - `GET /api/payroll/:id/payslip`: Authenticated employee / Admin payslip detail structure.
 
@@ -1089,11 +1105,11 @@ The `NotificationType` enum is expanded to include Module 4 event triggers:
    - `EmployeeSummary`: Lean normalized user reference (`_id`, `username`, `email`, `department`, `designation`, `phone`, `monthlySalary`).
    - Overtime DTOs: `OvertimeStatus`, `OvertimeRequestData`, `CreateOvertimeInput`, `ReviewOvertimeInput`, `OvertimeListResponse`.
    - Salary Advance DTOs: `SalaryAdvanceData`, `CreateAdvanceInput`, `AdvanceListResponse`.
-   - Payroll & Payslip DTOs: `PayrollStatus`, `PayrollData` (financial snapshot + audit trail), `AdjustPayrollInput`, `PayrollListResponse`, `UserPayslipsResponse`, `FinalizePayrollResponse`.
+   - Payroll & Payslip DTOs: `PaymentMethod`, `PayrollStatus`, `PayrollData` (financial snapshot + audit trail + disbursement fields `isPaid`, `paidAt`, `paymentMethod`, `transactionReference`, `paidBy`), `AdjustPayrollInput`, `MarkPaidInput`, `MarkMonthPaidInput`, `MarkPaidResponse`, `MarkMonthPaidResponse`, `PayrollListResponse`, `UserPayslipsResponse`, `FinalizePayrollResponse`.
 2. **API Client Services**:
    - `frontend/src/services/overtime.service.ts`: `submitOvertimeAPI`, `getMyOvertimeAPI`, `getAllOvertimeAPI`, `reviewOvertimeAPI`.
    - `frontend/src/services/advance.service.ts`: `logAdvanceAPI`, `getAdvancesAPI`, `getMyAdvancesAPI`.
-   - `frontend/src/services/payroll.service.ts`: `runPayrollDraftAPI`, `getPayrollRecordsAPI`, `adjustPayrollAPI`, `finalizePayrollAPI`, `getMyPayslipsAPI`, `getPayslipDetailsAPI`.
+   - `frontend/src/services/payroll.service.ts`: `runPayrollDraftAPI`, `getPayrollRecordsAPI`, `adjustPayrollAPI`, `finalizePayrollAPI`, `markPayrollPaidAPI`, `markMonthPayrollPaidAPI`, `getMyPayslipsAPI`, `getPayslipDetailsAPI`.
 3. **TanStack Query Custom Hooks**:
    - `frontend/src/hooks/queries/useOvertime.ts`:
      - `useMyOvertimeQuery(page, limit)`
@@ -1111,6 +1127,8 @@ The `NotificationType` enum is expanded to include Module 4 event triggers:
      - `useRunPayrollMutation()` (invalidates `["payroll"]`)
      - `useAdjustPayrollMutation()` (invalidates `["payroll"]`)
      - `useFinalizePayrollMutation()` (invalidates `["payroll"]`, `["advances"]`)
+     - `useMarkPayrollPaidMutation()` (invalidates `["payroll"]`)
+     - `useMarkMonthPayrollPaidMutation()` (invalidates `["payroll"]`)
 
 ### 15.10 Module 4 Full-Stack Frontend UI/UX Architecture (`/payroll`)
 1. **Dedicated Top-Level Route Shell (`frontend/src/app/payroll/page.tsx`)**:
@@ -1125,29 +1143,39 @@ The `NotificationType` enum is expanded to include Module 4 event triggers:
 3. **HR / Admin Payroll Run Table (`frontend/src/components/payroll/PayrollRunTable.tsx`)**:
    - Month-Year selector dropdown synced to reactive TanStack Query.
    - "Calculate Draft Payroll" action triggering recalculation across all active employees.
-   - Responsive ledger displaying: Employee details (username, role, department), Base Salary, LOP Days & Deduction, OT Hours & Pay, Advance Deduction, Bonus & Adjustments with quick-edit button, Net Take-Home Salary, and Status Badges (`DRAFT` vs `FINALIZED`).
+   - Responsive ledger displaying: Employee details (username, role, department), Base Salary, LOP Days & Deduction, OT Hours & Pay, Advance Deduction, Bonus & Adjustments with quick-edit button, Net Take-Home Salary, Status Badges (`DRAFT` vs `FINALIZED`), and Disbursement Status (`Paid` vs `● Unpaid`).
    - "Finalize & Lock Payroll" workflow with confirmation dialog, locking the pay cycle, marking advances as deducted, and dispatching real-time notifications to employees.
+   - "Disburse All (Mark Month Paid)" bulk action button for finalized cycles with unpaid employees, showing remaining unpaid count and total net payout.
+   - Row-level "Pay" disbursement trigger opening the payment modal for individual employees.
 4. **Payroll Adjustment Modal (`frontend/src/components/payroll/PayrollAdjustmentModal.tsx`)**:
    - Allows HR / Admin to modify discretionary Bonus (₹) and Other Deductions (₹) with explanatory notes prior to cycle finalization.
    - Live net salary calculation preview before persisting changes.
-5. **Overtime Management & Approvals (`frontend/src/components/payroll/OvertimeManagementTab.tsx`)**:
+5. **Mark Salary Paid Modal (`frontend/src/components/payroll/MarkPaidModal.tsx`)**:
+   - Supports both individual employee payout and bulk month-wide salary disbursement.
+   - Selection of Payment Method (`BANK_TRANSFER`, `UPI`, `CHEQUE`, `CASH`).
+   - Input for Bank Reference / UTR Number (`transactionReference`) with auto-clearing and error handling.
+   - Displays real-time summary of recipient, net salary amount, and pay period.
+6. **Overtime Management & Approvals (`frontend/src/components/payroll/OvertimeManagementTab.tsx`)**:
    - For HR / Admin: Displays pending approvals queue cards with applicant details, overtime hours, start/end timestamps, work description, and one-click "Approve" / "Reject" (with optional reason prompt) actions. Includes full workforce overtime history with status filters. "Request Overtime" button is hidden for `ADMIN` accounts.
    - For Employees: Displays self-service overtime application button and personal overtime log history.
-6. **Overtime Request Modal (`frontend/src/components/payroll/OvertimeRequestModal.tsx`)**:
+7. **Overtime Request Modal (`frontend/src/components/payroll/OvertimeRequestModal.tsx`)**:
    - Date picker, start time ("HH:mm"), and end time ("HH:mm").
    - Automatically computes overtime duration in hours with validation (end time must be after start time).
    - Mandatory work/task description field.
-7. **Salary Advance Management (`frontend/src/components/payroll/SalaryAdvanceTab.tsx`)**:
+8. **Salary Advance Management (`frontend/src/components/payroll/SalaryAdvanceTab.tsx`)**:
    - For HR / Admin: "Log Salary Advance" button, month-year selector, and workforce advances ledger showing deduction status (`Pending in Payroll` vs `Deducted`).
    - For Employees: Personal salary advance records and deduction tracking.
-8. **Log Advance Modal (`frontend/src/components/payroll/LogAdvanceModal.tsx`)**:
+9. **Log Advance Modal (`frontend/src/components/payroll/LogAdvanceModal.tsx`)**:
    - Active employee dropdown selector (strictly filtering out `ADMIN` accounts), positive INR amount, target billing cycle (`YYYY-MM`), and reason/notes.
-9. **Employee Payslips Tab (`frontend/src/components/payroll/EmployeePayslipsTab.tsx`)**:
-   - Responsive cards grid for all finalized monthly payslips.
-   - Visual badges for pay period, Net Take-Home Salary, Gross Earnings, and Total Deductions.
-   - One-click "View / Print Payslip" action opening the official payslip modal.
-10. **Printable Official Payslip Statement (`frontend/src/components/payroll/PayslipModal.tsx`)**:
+10. **Employee Payslips Tab (`frontend/src/components/payroll/EmployeePayslipsTab.tsx`)**:
+    - Responsive cards grid for all finalized monthly payslips.
+    - Visual badges for pay period, Net Take-Home Salary, Gross Earnings, and Total Deductions.
+    - One-click "View / Print Payslip" action opening the official payslip modal.
+11. **Printable Official Payslip Statement (`frontend/src/components/payroll/PayslipModal.tsx`)**:
     - Official corporate statement format designed for review, physical printing, or PDF export (`window.print()` / print stylesheets).
+    - Status badges: Dynamic "Disbursed & Paid" (emerald badge), "Finalized (Pending Payout)" (amber badge), or "Draft Calculation".
+    - Prominent angled "PAID" watermark stamp displayed when `payroll.isPaid === true`.
+    - Detailed disbursement metadata callout: payment method (e.g. Bank Transfer, UPI), payout date, and UTR/reference number.
     - Headers: Company branding, Pay Period, Payslip Reference ID, Generation Date.
     - Employee Profile: Username, Employee ID, Department, Designation, Joining Date.
     - Two-column financial balance sheet:
@@ -1190,6 +1218,221 @@ The `NotificationType` enum is expanded to include Module 4 event triggers:
      - HR OT approve/reject $\to$ Emits `notification:new` to `user_${applicantId}`.
      - HR log advance $\to$ Emits `notification:new` to `user_${recipientId}`.
      - HR finalize payroll $\to$ Emits `notification:new` to all active employee rooms and marks advances as deducted (`isDeducted = true`).
+
+---
+
+## 16. Comprehensive 7-Module Platform Audit & Living System Matrix
+
+### 16.1 System Audit Status Matrix
+
+| Module | Core Capability / Feature | Live Status | Implementation Code Location | Audit Analysis & Notes |
+|---|---|:---:|---|---|
+| **Module 1: Executive Dashboard** | Total Employees KPI Card | **Partial** | `frontend/src/app/dashboard/page.tsx` | Visual card rendered with mock figure ("125"). Needs dynamic backend endpoint `/api/dashboard/stats`. |
+| | Present, Absent & Late Counters | **Partial** | `frontend/src/app/dashboard/page.tsx` | Visual cards rendered with mock figures ("112", "8", "5"). Needs live aggregation from today's attendance roster. |
+| | Attendance Summary Distribution Chart | **Partial** | `frontend/src/app/dashboard/page.tsx` | Rendered using static SVG circle `strokeDasharray`. Needs reactive connection to daily percentages. |
+| | Total Monthly Payroll Burn Rate & OT | **Partial** | `frontend/src/app/dashboard/page.tsx` | Static SVG wave chart and OT bar chart. Needs live calculation from finalized/draft payroll and approved OT. |
+| | Payroll Status Indicators (Processed vs. Pending) | **Missing on Dashboard** | `frontend/src/app/payroll/page.tsx` | Exists on dedicated `/payroll` page, but absent from executive dashboard overview. |
+| | Month / Date Range Picker | **Partial** | `frontend/src/app/dashboard/page.tsx` | Visual pill dropdown exists; needs state hook to drive KPI metrics. |
+| **Module 2: Employee Management & RBAC** | Full CRUD (Add, Edit, View, Deactivate) | **Implemented** | `frontend/src/components/employees/` & `backend/src/controllers/employee.controller.ts` | Multi-modal employee lifecycle with full validation and soft deletion (`status: INACTIVE`). |
+| | Core Employee Fields & Strict Typing | **Implemented** | `backend/src/models/user.model.ts`, `backend/src/types/employee.types.ts` | Employee ID, Username, Email, Phone (E.164), Department, Designation, Joining Date, Monthly Salary, Status. |
+| | RBAC Hierarchy (ADMIN vs. HR vs. EMPLOYEE) | **Implemented** | `backend/src/middleware/auth.middleware.ts`, `backend/src/services/employee.service.ts` | HR blocked from modifying Admin/HR accounts; Admin self-preservation barrier prevents self-deactivation. |
+| | Automated 30-Day Permanent Cleanup Cron | **Implemented** | `backend/src/cron/employeeCleanup.cron.ts` | Midnight job hard-deletes inactive users after 30 days and removes orphan attendance/leaves. |
+| **Module 3: Daily Attendance Tracking** | Web-based Punch-In & Punch-Out | **Implemented** | `backend/src/services/attendance.service.ts`, `frontend/src/components/attendance/` | Single-punch daily record, live work-time tracker, lunch break deduction (12:00-13:00). |
+| | Flex Window & Grace Period Calculation | **Implemented** | `backend/src/services/attendance.service.ts` | 9:00-9:30 AM flex window with evening compensation; strict late after 9:30 AM with delay minutes display. |
+| | Half-Day & Absent Classification | **Implemented** | `backend/src/services/attendance.service.ts` | >= 420m: PRESENT; 240-419m: HALF_DAY; < 240m: ABSENT; Incomplete punch handling. |
+| | Attendance Filters & Workforce Roster | **Implemented** | `frontend/src/components/attendance/AttendanceView.tsx` | Filterable by date, department, and attendance status. |
+| | Manual Attendance Correction Workflow | **Implemented** | `frontend/src/components/attendance/CorrectionModal.tsx` & `backend/src/services/attendance.service.ts` | 12-hour AM/PM time picker, mandatory justification note, HR/Admin review flow. |
+| **Module 4: Biometric CSV Import Engine** | Hardware-Free Biometric CSV Ingestion | **Implemented** | `backend/src/services/biometricImport.service.ts`, `frontend/src/components/attendance/BiometricImportModal.tsx` | Multipart/memoryStorage upload pipeline parsing `Email,Date,PunchIn,PunchOut` CSV exports. |
+| | Identifier, Date & Timestamp Validation | **Implemented** | `backend/src/services/biometricImport.service.ts` | Resolves active user emails against `User.findOne({ email, status: "ACTIVE" })`, validates `YYYY-MM-DD` and `HH:mm` format. |
+| | Bounce Deduplication Engine | **Implemented** | `backend/src/services/biometricImport.service.ts` | Suppresses duplicate entries for the same employee on the same date, logging duplicates without failing batch. |
+| | Corrupt Records Review Table & Preview | **Implemented** | `frontend/src/components/attendance/BiometricImportModal.tsx` | Drag-and-drop dropzone with instant client-side preview cards (Total, Valid, Duplicate, Invalid) and review table. |
+| | Import History Log & Batch Statistics | **Implemented** | `backend/src/models/biometricImport.model.ts`, `backend/src/repositories/biometricImport.repository.ts` | Mongoose collection `biometric_imports` tracking total rows, successful, failed, error log, and uploader audit. |
+| **Module 5: Leave Management & Accruals** | Leave Application with Mandatory Fields | **Implemented** | `frontend/src/components/leaves/ApplyLeaveModal.tsx` | Start date, end date, leave type, and mandatory justification description. |
+| | Full-Day vs. Half-Day Support | **Implemented** | `backend/src/models/leave.model.ts`, `frontend/src/components/leaves/ApplyLeaveModal.tsx` | Half-day designated as post-lunch (1:00 PM to 6:00 PM, 0.5 days). |
+| | Annual Paid Leave Quota Tracking | **Implemented** | `backend/src/models/settings.model.ts`, `backend/src/services/leave.service.ts` | Default 5 paid days per calendar year; auto-updates upon approval. |
+| | Loss of Pay (LOP) Classification & Warnings | **Implemented** | `frontend/src/components/leaves/ApplyLeaveModal.tsx`, `backend/src/services/leave.service.ts` | Unpaid days computed when quota is exhausted; real-time wage deduction warning banner. |
+| | HR/Admin Approval State Machine | **Implemented** | `backend/src/services/leave.service.ts` | PENDING -> APPROVED / REJECTED with rejection reasons and Socket.io room notifications. |
+| | Direct Payroll LOP Integration | **Implemented** | `backend/src/services/payroll.service.ts` | Approved LOP days automatically queried and deducted from monthly salary at per-day rate. |
+| **Module 6: Payroll Management & Divisor Rules** | Statutory 26-Day Divisor Math Engine | **Implemented** | `backend/src/services/payroll.service.ts` | $\text{Per-Day} = \text{Salary} / 26.0$; $\text{Hourly} = \text{Per-Day} / 8.0$. Verified 0 rounding errors. |
+| | Salary Structure (Base, Allowances, Bonus) | **Partial** | `backend/src/models/payroll.model.ts` | Monthly Base Salary and performance bonus implemented; granular sub-allowances (HRA, DA) not broken out into discrete fields. |
+| | Overtime Engine (1.5x Multiplier) | **Implemented** | `backend/src/services/overtime.service.ts`, `backend/src/services/payroll.service.ts` | Overtime requests with hours and mandatory work descriptions; 1.5x hourly rate pay computation. |
+| | Unpaid Leave (LOP) Wage Deduction | **Implemented** | `backend/src/services/payroll.service.ts` | $\text{LOP Deduction} = \text{LOP Days} \times \text{Per-Day Rate}$. |
+| | In-Month Salary Advance Management | **Implemented** | `backend/src/services/salaryAdvance.service.ts`, `frontend/src/components/payroll/SalaryAdvanceTab.tsx` | Logging, monthly ledger, automatic payroll recovery deduction, and post-finalization lock. |
+| | Net Salary Computation Formula | **Implemented** | `backend/src/services/payroll.service.ts` | $\text{Net} = \text{Base} + \text{OT Pay} + \text{Bonus} - \text{LOP} - \text{Advances} - \text{Other Deductions}$. |
+| **Module 7: Payroll Processing Lifecycle** | Billing Cycle / Month-Year Selector | **Implemented** | `frontend/src/components/payroll/PayrollRunTable.tsx` | Reactive dropdown driving monthly draft calculations and ledger views. |
+| | Workforce Draft Generation | **Implemented** | `backend/src/services/payroll.service.ts` (`runPayrollDraft`) | Gathers active non-admin employees, leaves, overtime, and advances to upsert draft records. |
+| | Editable Draft Adjustments Modal | **Implemented** | `frontend/src/components/payroll/PayrollAdjustmentModal.tsx` | Discretionary bonus, other deductions, and adjustment notes prior to finalization lock. |
+| | Finalize & Lock Payroll State Machine | **Implemented** | `backend/src/services/payroll.service.ts` (`finalizePayroll`) | Transitions `DRAFT` $\to$ `FINALIZED`, stamps `finalizedBy` & `finalizedAt`, locks advances as deducted. |
+| | Mark Salary as Paid Toggle & Audit Trail | **Implemented** | `frontend/src/components/payroll/MarkPaidModal.tsx`, `backend/src/services/payroll.service.ts` | Individual and bulk month-wide salary disbursement with payment method, UTR reference, PAID badge, and real-time Socket notifications. |
+| | Payslip Archive & Official Statement Modal | **Implemented** | `frontend/src/components/payroll/PayslipModal.tsx`, `EmployeePayslipsTab.tsx` | Two-column financial breakdown with print stylesheet and instant PDF export. |
+| **Module 8: Payslips & Enterprise Reports Engine** | Individual Payslips & Print/Download PDF | **Implemented** | `frontend/src/components/payroll/PayslipModal.tsx`, `EmployeePayslipsTab.tsx` | Formatted two-column payslips with print media CSS and instantaneous client-side PDF export. |
+| | Attendance Audit Report & KPIs | **Implemented** | `frontend/src/components/reports/AttendanceReportTab.tsx`, `backend/src/repositories/reports.repository.ts` | Date-range workforce attendance analytics, presence rate %, present/absent/half-day/late tallies, total hours. |
+| | Payroll Expenditure Report & Budget KPIs | **Implemented** | `frontend/src/components/reports/PayrollReportTab.tsx`, `backend/src/repositories/reports.repository.ts` | Monthly budget breakdown, statutory LOP deductions, overtime, advance recovery, net disbursed, and payment audit status. |
+| | Overtime Utilization & Compensation Report | **Implemented** | `frontend/src/components/reports/OvertimeReportTab.tsx`, `backend/src/repositories/reports.repository.ts` | Approved OT hours, 1.5x statutory multipliers, participant counts, hourly rates, and total payouts. |
+| | RFC-4180 Compliant CSV Export Engine | **Implemented** | `frontend/src/utils/csvExport.ts` | Double-quote escaping, comma-safety, UTF-8 BOM (`\uFEFF`) Excel currency compatibility, and instant Blob downloads. |
+| | Multi-Tab Reports Dashboard UI | **Implemented** | `frontend/src/app/reports/page.tsx`, `frontend/src/components/reports/ReportsView.tsx` | Role-guarded (`ADMIN`, `HR`) responsive shell, pill tab switcher, reusable 4-column KPI grid, and department filter bar. |
+
+---
+
+### 16.2 Special Audit Findings
+
+#### 1. Approval Hierarchy (Self-Approval & HR Restrictions)
+- **Current Live Reality**:
+  - In `leave.service.ts` (`reviewLeave`), `attendance.service.ts` (`reviewCorrection`), and `overtime.service.ts` (`reviewOvertime`), authorization is checked using:
+    ```typescript
+    if (reviewerRole !== "HR" && reviewerRole !== "ADMIN") {
+      throw new ForbiddenError("Only HR and Admin are authorized to review.");
+    }
+    ```
+  - **Gap Identified**: There is currently **no self-approval check** (`reviewerId === applicantId`) in the service layer, meaning an HR user could technically approve their own application. Furthermore, there is no logic requiring that if the applicant is an `HR` user, ONLY an `ADMIN` can approve it.
+  - **Required Remediation**: Add strict service-layer guards:
+    1. `if (applicantId === reviewerId) throw new ForbiddenError("Self-approval is strictly forbidden.");`
+    2. `if (applicant.role === "HR" && reviewerRole !== "ADMIN") throw new ForbiddenError("HR requests require approval by an Administrator.");`
+
+#### 2. Overtime Application Workflow
+- **Current Live Reality**:
+  - In `OvertimeManagementTab.tsx`, the **"Request Overtime"** button is conditioned on `currentUser?.role !== "ADMIN"`.
+  - Because `currentUser?.role` can be either `EMPLOYEE` or `HR`, both standard employees and HR team members can open `OvertimeRequestModal.tsx`.
+  - The modal collects Date, Start Time (`HH:mm`), End Time (`HH:mm`), automatically calculates duration hours, and requires a mandatory work description log (`*`).
+  - **Audit Status**: **Fully Implemented** for both Employees and HR users.
+
+---
+
+### 16.3 Pending Implementation Backlog
+
+The following items are genuinely missing or partial in the codebase and represent the remaining platform deliverables:
+
+1. **Module 1 (Executive Dashboard Live Wiring)**:
+   - Build backend endpoint `GET /api/dashboard/stats?monthYear=YYYY-MM` aggregating live headcount, today's attendance (present, absent, late counts + presence rate %), monthly payroll burn rate, and pending approval queues.
+   - Replace static mock figures in `frontend/src/app/dashboard/page.tsx` with reactive TanStack Query hooks.
+2. **Approval Hierarchy & Self-Approval Barriers**:
+   - Enforce self-approval prevention (`applicantId !== reviewerId`) across Leaves, Attendance Corrections, and Overtime.
+   - Enforce that HR employee applications can ONLY be reviewed and approved by users with the `ADMIN` role.
+3. **Granular Salary Structure Breakdown**:
+   - Optionally break down Base Salary into standard statutory components (Basic, HRA, Special Allowance).
+
+---
+
+## 17. Module 4: Biometric CSV Import Engine Architecture (`/attendance`)
+
+### 17.1 CSV Specification & Column Headers
+- **Case-Sensitive Header Specification**: `Email,Date,PunchIn,PunchOut`
+- **Employee Identifier**: `Email` resolved against `UserModel.findOne({ email: lowerEmail, status: "ACTIVE" })`.
+- **Date Format**: `YYYY-MM-DD` (ISO 8601 calendar date, normalized to UTC midnight).
+- **PunchIn & PunchOut Format**: `HH:mm` (24-hour military format). PunchOut is optional to support missed punch logs.
+
+### 17.2 Database Schema (`backend/src/models/biometricImport.model.ts`)
+- **Collection Name**: `biometric_imports`
+- **Fields**:
+  - `fileName`: `string` (Original filename uploaded by client).
+  - `uploadedBy`: `Types.ObjectId` (ref: `"User"`, indexed).
+  - `totalRows`: `number` (Total data rows parsed).
+  - `successfulRows`: `number` (Records inserted/upserted into `attendances`).
+  - `failedRows`: `number` (Corrupt, invalid, or duplicate records skipped).
+  - `errorLog`: `Array<{ row: number, email?: string, reason: string }>` (Detailed audit reasons for failed rows).
+  - `uploadedAt`: `Date` (Timestamp of import operation).
+
+### 17.3 Processing Pipeline & Metrics Computation (`backend/src/services/biometricImport.service.ts`)
+1. **Header & Integrity Validation**: Rejects files with invalid header signatures (`400 Bad Request`).
+2. **Staff Roster Resolution**: Looks up active employee IDs via email address. Unrecognized emails are rejected and logged.
+3. **In-File Deduplication**: Tracks `{ lowerEmail, dateStr }` in an in-memory set. Subsequent duplicate entries within the same file are suppressed and logged.
+4. **Attendance Metrics & Flex Rules**:
+   - `punchInDate` combined from `Date` and `PunchIn`.
+   - Evaluates late arrivals against `graceWindowEndTime` (09:30 AM). If `punchIn > 09:30 AM`, sets `isLate: true` and calculates `lateMinutes = punchIn - 09:30 AM`.
+   - Computes `flexMinutesOwed = min(30, punchIn - 09:00 AM)` and sets `expectedPunchOut = 18:00 + flexMinutesOwed`.
+   - If `PunchOut` is present:
+     - Calculates gross minutes. If gross $\ge 300\text{ mins}$ (5 hours), deducts 60-minute company lunch hour.
+     - Sets `totalWorkingMinutes`.
+     - Checks evening compensation: `isCompensated = punchOut >= expectedPunchOut`.
+     - Assigns status: `ABSENT` ($< 240\text{m}$), `HALF_DAY` ($240\text{m} \le \text{mins} < 420\text{m}$), `PRESENT` ($\ge 420\text{m}$ and compensated, or $\ge 480\text{m}$).
+   - If `PunchOut` is missing: sets `status = "ABSENT"`, `totalWorkingMinutes = 0`, `punchOut = null`.
+5. **Idempotent Upsert**: Upserts into `AttendanceModel` using compound index `{ userId: 1, date: 1 }`.
+
+### 17.4 Backend Endpoints (`backend/src/routes/attendance.routes.ts`)
+- `POST /api/attendance/import-csv`: Protected (`ADMIN`, `HR`). Accepts multipart `file` via `multer.memoryStorage()`.
+- `GET /api/attendance/import-history`: Protected (`ADMIN`, `HR`). Returns the latest 20 import audit logs.
+
+### 17.5 Frontend UI/UX Components
+- **Action Bar Shortcuts (`frontend/src/components/attendance/AttendanceView.tsx`)**:
+  - `[📥 Sample CSV]`: Instant browser download of `sample_biometric_attendance.csv` via Blob URL (`frontend/src/utils/sampleBiometricCSV.ts`).
+  - `[📤 Import Biometric CSV]`: Opens the dedicated import modal.
+- **Biometric Import Modal (`frontend/src/components/attendance/BiometricImportModal.tsx`)**:
+  - Drag-and-drop file upload zone.
+  - Client-side parser generating real-time interactive preview.
+  - KPI summary cards: Total Rows, Valid Records (Green), Duplicates (Amber), Invalid Rows (Red).
+  - Interactive Review Table displaying row #, email, date, punches, and preview validation badges.
+  - "Confirm & Import [X] Records" button invoking `useImportBiometricMutation`.
+  - Auto-invalidates TanStack Query key `["attendance"]` to refresh the roster table immediately.
+
+---
+
+## 18. Module 8: Enterprise Reports Engine & Multi-Dimensional Aggregation Pipelines
+
+### 18.1 Architecture & Zero-Redundancy Principle
+- **Dynamic Derivation**: All workforce compliance and expenditure analytics are derived dynamically via Mongoose aggregation pipelines without creating redundant database collections.
+- **Source Collections Utilized**:
+  - `attendances`: Daily punch intervals, working minutes, late arrivals, and statuses (`PRESENT`, `HALF_DAY`, `ABSENT`).
+  - `payrolls`: Monthly compensation breakdowns (Base, LOP deduction, OT pay, Advances, Net Salary, Payment status).
+  - `overtime_requests`: Approved overtime logs, applicant hours, and billing cycles.
+  - `users`: Normalized employee profiles and departments.
+
+### 18.2 Aggregation Pipelines (`backend/src/repositories/reports.repository.ts`)
+1. **Attendance Report Pipeline (`getAttendanceReportData`)**:
+   - Matches date interval (`startDate` to `endDate`), joins `users` via `$lookup`, filters active non-admin personnel and optional `department`.
+   - Uses `$facet` to simultaneously calculate:
+     - `records`: Grouped per employee summing `totalRecordedDays`, `daysPresent`, `daysAbsent`, `halfDays`, `lateCount`, and `totalWorkingMinutes`.
+     - `summary`: Global workforce aggregates (`totalPresentDays`, `totalAbsentDays`, `totalHalfDays`, `totalLateCount`, and `overallPresenceRate` as a percentage).
+2. **Payroll & Salary Expenditure Report Pipeline (`getPayrollReportData`)**:
+   - Matches target billing cycle (`monthYear`), joins `users` with optional department filtering.
+   - Uses `$facet` to project:
+     - `records`: Individual salary breakdown (Base, LOP, OT, Advance, Bonus, Net Salary, and Payment status).
+     - `summary`: High-level corporate budget metrics (`totalGrossBudget`, `totalLopDeductions`, `totalAdvanceDeductions`, `totalBonusGiven`, `totalOvertimePaid`, `totalNetDisbursed`, `totalPaidCount`, `totalUnpaidCount`).
+3. **Overtime Utilization Report Pipeline (`getOvertimeReportData`)**:
+   - Matches approved overtime requests within the target `monthYear`.
+   - Groups per employee to compute `approvedHours`, `submissionsCount`, dynamically derives `hourlyRate` ($\text{monthlySalary} / 208$), 1.5x `otRate`, and `totalOtPay`.
+   - Uses `$facet` to return individual employee OT records and summary KPIs (`uniqueEmployeesCount`, `totalApprovedHours`, `totalOtPayout`, `averageHoursPerEmployee`).
+
+### 18.3 Validation Schemas & Data Contracts (`backend/src/types/reports.types.ts`)
+- `attendanceReportQuerySchema`: `startDate` (YYYY-MM-DD), `endDate` (YYYY-MM-DD), `department` (optional).
+- `monthlyReportQuerySchema`: `monthYear` (YYYY-MM), `department` (optional).
+- Full TypeScript DTO contracts: `AttendanceReportDTO`, `PayrollReportDTO`, `OvertimeReportDTO`.
+
+### 18.4 Service, Controller & Endpoints (`backend/src/routes/reports.routes.ts`)
+- **Protected Access**: All reporting endpoints require a valid JWT with active session and `ADMIN` or `HR` authority (`authorizeRoles("ADMIN", "HR")`).
+- **Endpoints Mounted at `/api/reports`**:
+  - `GET /api/reports/attendance`: Accepts `startDate`, `endDate`, and optional `department`. Enforces chronological date order and Zod validation, returning `{ summary, records }`.
+  - `GET /api/reports/payroll`: Accepts `monthYear` (`YYYY-MM`) and optional `department`. Returns workforce compensation metrics and payment status breakdowns.
+  - `GET /api/reports/overtime`: Accepts `monthYear` (`YYYY-MM`) and optional `department`. Returns approved OT hours and certified 1.5x wage payouts.
+
+### 18.5 Frontend Client Services, Hooks & RFC-4180 CSV Export
+- **RFC-4180 CSV Export Utility (`frontend/src/utils/csvExport.ts`)**:
+  - `exportToCsv<T>(filename, columns, data)`: Generic, pure TypeScript CSV generator.
+  - Automatic double-quote wrapping and escaping (`""`) for fields containing commas, quotes, or newlines.
+  - Prepends UTF-8 Byte Order Mark (`\uFEFF`) to prevent character corruption for special characters and INR currency (`₹`) in Microsoft Excel.
+  - Dynamic hidden anchor tag click and `URL.revokeObjectURL()` cleanup.
+- **Client Services (`frontend/src/services/reports.service.ts`)**:
+  - `getAttendanceReportAPI(params)`
+  - `getPayrollReportAPI(params)`
+  - `getOvertimeReportAPI(params)`
+- **TanStack Query Hooks (`frontend/src/hooks/queries/useReports.ts`)**:
+  - `useAttendanceReportQuery(params, enabled)`
+  - `usePayrollReportQuery(params, enabled)`
+  - `useOvertimeReportQuery(params, enabled)`
+  - Configured with `staleTime: 60 * 1000` and `placeholderData: keepPreviousData` for smooth filtering.
+
+### 18.6 Enterprise Reports Frontend UI/UX Architecture (`/reports`)
+- **Route Shell & Access Guard (`frontend/src/app/reports/page.tsx`)**:
+  - Encapsulated within `DashboardLayout`.
+  - Enforces client-side role guarding: renders `<ReportsView />` if `currentUser.role === "ADMIN" || currentUser.role === "HR"`, otherwise displays an interactive Access Restricted warning banner.
+- **Main Coordinator View (`frontend/src/components/reports/ReportsView.tsx`)**:
+  - Modern pill navigation tab switcher supporting 3 operational views: `Attendance Report`, `Payroll Expenditure`, and `Overtime Utilization`.
+- **Reusable Report UI Components (`frontend/src/components/reports/`)**:
+  - `ReportSummaryCards.tsx`: 4-column KPI metric card grid displaying icons, titles, formatted metric values, and status badges (`teal`, `emerald`, `amber`, `rose`, `indigo`).
+  - `ReportFilterBar.tsx`: Responsive filter strip supporting Date Range Pickers (Start/End date), Month-Year selector (`YYYY-MM`), Department dropdown, client-side employee search input, record count chip, and the primary `[📥 Export to CSV]` action button.
+- **Operational Tab Views**:
+  - `AttendanceReportTab.tsx`: Tracks workforce presence rate (%), present, absent, half-day, and late arrivals. Features an employee attendance breakdown table and generates `attendance_report_<startDate>_to_<endDate>.csv`.
+  - `PayrollReportTab.tsx`: Tracks corporate payroll expenditure (Gross Budget, LOP deductions, Advance recovery, Net disbursed). Features an employee compensation breakdown table with payment status badges (`PAID` vs `DRAFT`/`FINALIZED`) and generates `payroll_expenditure_report_<monthYear>.csv`.
+  - `OvertimeReportTab.tsx`: Tracks verified overtime volume (Approved OT hours, 1.5x wage payout, participating workforce, average OT hours). Features an hourly rate breakdown table and generates `overtime_utilization_report_<monthYear>.csv`.
 
 ---
 

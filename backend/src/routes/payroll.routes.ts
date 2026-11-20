@@ -6,6 +6,8 @@ import {
   runPayrollSchema,
   adjustPayrollSchema,
   finalizePayrollSchema,
+  markPaidSchema,
+  markMonthPaidSchema,
 } from "../types/payroll.types";
 
 const payrollRouter: Router = Router();
@@ -43,6 +45,20 @@ payrollRouter.post(
   authorizeRoles("ADMIN", "HR"),
   validateBody(finalizePayrollSchema),
   payrollController.finalizePayroll
+);
+
+payrollRouter.patch(
+  "/:id/pay",
+  authorizeRoles("ADMIN", "HR"),
+  validateBody(markPaidSchema),
+  payrollController.markPayrollPaid
+);
+
+payrollRouter.post(
+  "/pay-month",
+  authorizeRoles("ADMIN", "HR"),
+  validateBody(markMonthPaidSchema),
+  payrollController.markMonthPayrollPaid
 );
 
 export default payrollRouter;

@@ -157,6 +157,7 @@ export const Sidebar: React.FC = () => {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={true}
                   onClick={closeMobile}
                   title={isCollapsed ? item.title : undefined}
                   className={`flex items-center ${isCollapsed ? "lg:justify-center px-4 lg:px-2" : "gap-3.5 px-4"

@@ -3,6 +3,14 @@ import { Schema, model, Document, Types } from "mongoose";
 export type PayrollStatus = "DRAFT" | "FINALIZED";
 export const PAYROLL_STATUSES: PayrollStatus[] = ["DRAFT", "FINALIZED"];
 
+export type PaymentMethod = "BANK_TRANSFER" | "UPI" | "CHEQUE" | "CASH";
+export const PAYMENT_METHODS: PaymentMethod[] = [
+  "BANK_TRANSFER",
+  "UPI",
+  "CHEQUE",
+  "CASH",
+];
+
 export interface IPayroll {
   userId: Types.ObjectId;
   monthYear: string;
@@ -22,6 +30,13 @@ export interface IPayroll {
   bonus: number;
   otherDeductions: number;
   netSalary: number;
+
+  // Disbursement Tracking Fields
+  isPaid: boolean;
+  paidAt?: Date | null;
+  paymentMethod?: PaymentMethod | null;
+  transactionReference?: string | null;
+  paidBy?: Types.ObjectId | null;
 
   // Audit Fields
   generatedBy: Types.ObjectId;
@@ -122,6 +137,32 @@ const payrollSchema = new Schema<IPayrollDocument>(
     netSalary: {
       type: Number,
       required: true,
+    },
+
+    // Disbursement Tracking Fields
+    isPaid: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+    paymentMethod: {
+      type: String,
+      enum: PAYMENT_METHODS,
+      default: null,
+    },
+    transactionReference: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    paidBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
 
     // Audit Fields

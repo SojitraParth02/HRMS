@@ -14,7 +14,7 @@ export const useNotificationsQuery = (enabled: boolean = true) => {
     queryFn: getNotifications,
     enabled,
     staleTime: 30 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 };
 

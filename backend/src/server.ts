@@ -15,6 +15,7 @@ import settingsRouter from "./routes/settings.routes";
 import overtimeRouter from "./routes/overtime.routes";
 import salaryAdvanceRouter from "./routes/salaryAdvance.routes";
 import payrollRouter from "./routes/payroll.routes";
+import reportsRouter from "./routes/reports.routes";
 
 dotenv.config();
 
@@ -42,6 +43,7 @@ app.use("/api/settings", settingsRouter);
 app.use("/api/overtime", overtimeRouter);
 app.use("/api/advances", salaryAdvanceRouter);
 app.use("/api/payroll", payrollRouter);
+app.use("/api/reports", reportsRouter);
 
 const httpServer: http.Server = http.createServer(app);
 

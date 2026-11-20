@@ -133,6 +133,53 @@ export class PayrollController {
     }
   };
 
+  public markPayrollPaid = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const user = req.user;
+      if (!user) {
+        res.status(401).json({ status: "error", message: "Unauthorized." });
+        return;
+      }
+
+      const id = String(req.params.id);
+      const updated = await this.service.markRecordPaid(id, req.body, user.id);
+
+      res.status(200).json({
+        status: "success",
+        message: "Salary marked as paid successfully.",
+        data: { payroll: updated },
+      });
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  };
+
+  public markMonthPayrollPaid = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const user = req.user;
+      if (!user) {
+        res.status(401).json({ status: "error", message: "Unauthorized." });
+        return;
+      }
+
+      const result = await this.service.markMonthPaid(req.body, user.id);
+
+      res.status(200).json({
+        status: "success",
+        message: `All finalized salaries for ${result.monthYear} marked as paid (${result.disbursedCount} disbursed).`,
+        data: result,
+      });
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  };
+
   public getMyPayslips = async (
     req: Request,
     res: Response

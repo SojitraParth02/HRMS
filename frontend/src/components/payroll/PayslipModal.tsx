@@ -100,10 +100,21 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
               </p>
             </div>
             <div className="text-left sm:text-right">
-              <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200/80 rounded-full text-xs font-bold inline-flex items-center gap-1">
-                <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-600" />
-                {payroll.status === "FINALIZED" ? "Paid & Finalized" : "Draft Calculation"}
-              </span>
+              {payroll.isPaid ? (
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                  <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-600" />
+                  Disbursed &amp; Paid
+                </span>
+              ) : payroll.status === "FINALIZED" ? (
+                <span className="px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                  <CheckCircleIcon className="w-3.5 h-3.5 text-amber-600" />
+                  Finalized (Pending Payout)
+                </span>
+              ) : (
+                <span className="px-3 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                  Draft Calculation
+                </span>
+              )}
               <p className="text-xs font-bold text-slate-700 mt-1 font-mono">
                 {formatMonthYear(payroll.monthYear)}
               </p>
@@ -226,13 +237,26 @@ export const PayslipModal: React.FC<PayslipModalProps> = ({
           </div>
 
           {/* Big Net Salary Callout */}
-          <div className="bg-linear-to-r from-teal-700 to-teal-800 text-white rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+          <div className="bg-linear-to-r from-teal-700 to-teal-800 text-white rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md relative overflow-hidden">
+            {payroll.isPaid && (
+              <div className="absolute right-4 -top-3 opacity-10 select-none pointer-events-none text-7xl font-black tracking-widest text-white rotate-12">
+                PAID
+              </div>
+            )}
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-teal-200">
                 Net Disbursed Take-Home Pay
               </p>
               <p className="text-[11px] text-teal-100/90 mt-0.5">
-                Credited directly to registered bank account
+                {payroll.isPaid ? (
+                  <>
+                    Credited via <span className="font-semibold text-white">{payroll.paymentMethod?.replace("_", " ")}</span>
+                    {payroll.paidAt && ` on ${new Date(payroll.paidAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`}
+                    {payroll.transactionReference && ` • Ref/UTR: ${payroll.transactionReference}`}
+                  </>
+                ) : (
+                  "Credited directly to registered bank account upon disbursement"
+                )}
               </p>
             </div>
             <div className="text-right">

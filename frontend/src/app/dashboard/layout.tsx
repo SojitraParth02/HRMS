@@ -14,7 +14,14 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter();
   const { isAuthenticated, token } = useAppSelector((state) => state.auth);
-  const [isHydrated, setIsHydrated] = useState<boolean>(false);
+
+  // Synchronously initialize isHydrated on client if token exists in localStorage
+  const [isHydrated, setIsHydrated] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return Boolean(localStorage.getItem("token"));
+    }
+    return false;
+  });
 
   useEffect(() => {
     const storedToken: string | null =
@@ -32,7 +39,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     Boolean(token) ||
     (typeof window !== "undefined" && Boolean(localStorage.getItem("token")));
 
-  if (!isHydrated || !isUserAuthenticated) {
+  if (!isHydrated && !isUserAuthenticated) {
     return (
       <div
         className="flex min-h-screen items-center justify-center bg-[#f0f8f7]"

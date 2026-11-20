@@ -92,6 +92,12 @@ const renderNotificationIcon = (type: NotificationType): React.ReactNode => {
           <PaymentsIcon className="w-4 h-4" />
         </div>
       );
+    case "SALARY_DISBURSED":
+      return (
+        <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+          <PaymentsIcon className="w-4 h-4" />
+        </div>
+      );
     case "PAYROLL_FINALIZED":
       return (
         <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">

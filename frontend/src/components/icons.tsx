@@ -39,6 +39,8 @@ import RestartAlt from "@mui/icons-material/RestartAlt";
 import WarningAmber from "@mui/icons-material/WarningAmber";
 import Edit from "@mui/icons-material/Edit";
 import EventAvailable from "@mui/icons-material/EventAvailable";
+import UploadFile from "@mui/icons-material/UploadFile";
+import Download from "@mui/icons-material/Download";
 
 /**
  * Higher-Order Component (HOC) to scale all icons by 1.25em
@@ -112,3 +114,5 @@ export const BlockIcon: React.FC<SvgIconProps> = withCustomSize(Block);
 export const RestartAltIcon: React.FC<SvgIconProps> = withCustomSize(RestartAlt);
 export const WarningIcon: React.FC<SvgIconProps> = withCustomSize(WarningAmber);
 export const EditIcon: React.FC<SvgIconProps> = withCustomSize(Edit);
+export const UploadFileIcon: React.FC<SvgIconProps> = withCustomSize(UploadFile);
+export const DownloadIcon: React.FC<SvgIconProps> = withCustomSize(Download);

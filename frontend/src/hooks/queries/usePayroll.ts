@@ -6,6 +6,8 @@ import {
   finalizePayrollAPI,
   getMyPayslipsAPI,
   getPayslipDetailsAPI,
+  markPayrollPaidAPI,
+  markMonthPayrollPaidAPI,
 } from "../../services/payroll.service";
 import {
   PayrollData,
@@ -14,6 +16,9 @@ import {
   PayrollListResponse,
   UserPayslipsResponse,
   FinalizePayrollResponse,
+  MarkPaidInput,
+  MarkMonthPaidInput,
+  MarkMonthPaidResponse,
 } from "../../types/payroll.types";
 import { ADVANCE_KEYS } from "./useAdvances";
 
@@ -93,6 +98,32 @@ export const useFinalizePayrollMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PAYROLL_KEYS.all });
       queryClient.invalidateQueries({ queryKey: ADVANCE_KEYS.all });
+    },
+  });
+};
+
+export const useMarkPayrollPaidMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    PayrollData,
+    Error,
+    { id: string; payload: MarkPaidInput }
+  >({
+    mutationFn: ({ id, payload }) => markPayrollPaidAPI(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PAYROLL_KEYS.all });
+    },
+  });
+};
+
+export const useMarkMonthPayrollPaidMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<MarkMonthPaidResponse, Error, MarkMonthPaidInput>({
+    mutationFn: (payload) => markMonthPayrollPaidAPI(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PAYROLL_KEYS.all });
     },
   });
 };

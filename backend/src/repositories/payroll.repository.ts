@@ -4,6 +4,7 @@ import {
   IPayroll,
   IPayrollDocument,
   PayrollStatus,
+  PaymentMethod,
 } from "../models/payroll.model";
 
 export class PayrollRepository {
@@ -40,6 +41,7 @@ export class PayrollRepository {
       .populate("userId", "username email department designation phone monthlySalary")
       .populate("generatedBy", "username email")
       .populate("finalizedBy", "username email")
+      .populate("paidBy", "username email")
       .exec()) as IPayrollDocument | null;
   }
 
@@ -56,6 +58,7 @@ export class PayrollRepository {
       .populate("userId", "username email department designation phone monthlySalary")
       .populate("generatedBy", "username email")
       .populate("finalizedBy", "username email")
+      .populate("paidBy", "username email")
       .sort({ "userId.username": 1, createdAt: 1 })
       .exec()) as IPayrollDocument[];
   }
@@ -115,6 +118,60 @@ export class PayrollRepository {
       status: "DRAFT",
     }).exec();
     return result.deletedCount;
+  }
+
+  public async markRecordPaid(
+    id: string,
+    paidBy: Types.ObjectId,
+    paidAt: Date,
+    paymentMethod: PaymentMethod,
+    transactionReference?: string
+  ): Promise<IPayrollDocument | null> {
+    const updatePayload: Record<string, unknown> = {
+      isPaid: true,
+      paidAt,
+      paymentMethod,
+      paidBy,
+    };
+    if (transactionReference !== undefined) {
+      updatePayload.transactionReference = transactionReference;
+    }
+
+    return (await PayrollModel.findByIdAndUpdate(
+      id,
+      { $set: updatePayload },
+      { returnDocument: "after", runValidators: true }
+    )
+      .populate("userId", "username email department designation phone monthlySalary")
+      .populate("generatedBy", "username email")
+      .populate("finalizedBy", "username email")
+      .populate("paidBy", "username email")
+      .exec()) as IPayrollDocument | null;
+  }
+
+  public async markMonthPaid(
+    monthYear: string,
+    paidBy: Types.ObjectId,
+    paidAt: Date,
+    paymentMethod: PaymentMethod,
+    transactionReference?: string
+  ): Promise<number> {
+    const updatePayload: Record<string, unknown> = {
+      isPaid: true,
+      paidAt,
+      paymentMethod,
+      paidBy,
+    };
+    if (transactionReference !== undefined) {
+      updatePayload.transactionReference = transactionReference;
+    }
+
+    const result = await PayrollModel.updateMany(
+      { monthYear, status: "FINALIZED", isPaid: false },
+      { $set: updatePayload }
+    ).exec();
+
+    return result.modifiedCount;
   }
 
   public async findUserPayslips(

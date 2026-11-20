@@ -8,6 +8,8 @@ import {
   submitCorrection,
   getCorrections,
   reviewCorrection,
+  importBiometricCSV,
+  getBiometricImportHistory,
 } from "../../services/attendance.service";
 import {
   TodayAttendanceData,
@@ -17,6 +19,8 @@ import {
   CreateCorrectionInput,
   ReviewCorrectionInput,
   CorrectionStatus,
+  BiometricImportResult,
+  BiometricImportHistoryItem,
 } from "../../types/attendance.types";
 
 export const ATTENDANCE_KEYS = {
@@ -119,5 +123,24 @@ export const useReviewCorrectionMutation = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["attendance"] });
     },
+  });
+};
+
+export const useImportBiometricMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => importBiometricCSV(file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["attendance"] });
+    },
+  });
+};
+
+export const useBiometricImportHistoryQuery = (enabled: boolean = true) => {
+  return useQuery<BiometricImportHistoryItem[], Error>({
+    queryKey: ["attendance", "import-history"],
+    queryFn: getBiometricImportHistory,
+    enabled,
+    staleTime: 60 * 1000,
   });
 };

@@ -86,6 +86,8 @@ export interface AdvanceListResponse {
 // ==========================================
 export type PayrollStatus = "DRAFT" | "FINALIZED";
 
+export type PaymentMethod = "BANK_TRANSFER" | "UPI" | "CHEQUE" | "CASH";
+
 export interface PayrollData {
   _id: string;
   userId: string | EmployeeSummary;
@@ -107,6 +109,13 @@ export interface PayrollData {
   otherDeductions: number;
   netSalary: number;
 
+  // Disbursement Tracking
+  isPaid: boolean;
+  paidAt?: string | null;
+  paymentMethod?: PaymentMethod | null;
+  transactionReference?: string | null;
+  paidBy?: string | EmployeeSummary | null;
+
   // Audit Details
   generatedBy: string | EmployeeSummary;
   finalizedBy?: string | EmployeeSummary | null;
@@ -120,6 +129,26 @@ export interface AdjustPayrollInput {
   bonus?: number;
   otherDeductions?: number;
   notes?: string;
+}
+
+export interface MarkPaidInput {
+  paymentMethod?: PaymentMethod;
+  transactionReference?: string;
+}
+
+export interface MarkMonthPaidInput {
+  monthYear: string;
+  paymentMethod?: PaymentMethod;
+  transactionReference?: string;
+}
+
+export interface MarkPaidResponse {
+  payroll: PayrollData;
+}
+
+export interface MarkMonthPaidResponse {
+  disbursedCount: number;
+  monthYear: string;
 }
 
 export interface PayrollListResponse {

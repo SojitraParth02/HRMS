@@ -7,6 +7,8 @@ import {
   CreateCorrectionInput,
   ReviewCorrectionInput,
   CorrectionStatus,
+  BiometricImportResult,
+  BiometricImportHistoryItem,
 } from "../types/attendance.types";
 
 export const punchIn = async (): Promise<AttendanceRecord> => {
@@ -72,6 +74,34 @@ export const submitCorrection = async (
     data: { correction: AttendanceCorrectionRecord };
   }>("/api/attendance/correction", payload);
   return response.data.data.correction;
+};
+
+export const importBiometricCSV = async (
+  file: File
+): Promise<BiometricImportResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await apiClient.post<{
+    status: string;
+    message: string;
+    data: BiometricImportResult;
+  }>("/api/attendance/import-csv", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return response.data.data;
+};
+
+export const getBiometricImportHistory = async (): Promise<
+  BiometricImportHistoryItem[]
+> => {
+  const response = await apiClient.get<{
+    status: string;
+    data: { history: BiometricImportHistoryItem[] };
+  }>("/api/attendance/import-history");
+  return response.data.data.history;
 };
 
 export const getCorrections = async (

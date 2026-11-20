@@ -3,6 +3,7 @@ import {
   attendanceService,
   AttendanceService,
 } from "../services/attendance.service";
+import { biometricImportService } from "../services/biometricImport.service";
 import {
   ValidationError,
   BadRequestError,
@@ -221,6 +222,55 @@ export class AttendanceController {
         status: "success",
         message: `Correction request has been ${req.body.status.toLowerCase()} successfully.`,
         data: { correction },
+      });
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  };
+
+  public importBiometricCSV = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const user = req.user;
+      if (!user) {
+        res.status(401).json({ status: "error", message: "Unauthorized." });
+        return;
+      }
+
+      if (!req.file) {
+        res
+          .status(400)
+          .json({ status: "error", message: "No CSV file uploaded. Please attach a file." });
+        return;
+      }
+
+      const result = await biometricImportService.importCSV(
+        req.file.buffer,
+        req.file.originalname,
+        user.id
+      );
+
+      res.status(200).json({
+        status: "success",
+        message: `Biometric import completed: ${result.successfulRows} of ${result.totalRows} records successfully processed.`,
+        data: result,
+      });
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  };
+
+  public getImportHistory = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const history = await biometricImportService.getImportHistory();
+      res.status(200).json({
+        status: "success",
+        data: { history },
       });
     } catch (error) {
       this.handleError(error, res);

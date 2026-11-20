@@ -24,11 +24,31 @@ export const finalizePayrollSchema = z.object({
     .regex(monthYearRegex, "Month-Year must be in YYYY-MM format (e.g. 2026-11)"),
 });
 
+export const markPaidSchema = z.object({
+  paymentMethod: z
+    .enum(["BANK_TRANSFER", "UPI", "CHEQUE", "CASH"])
+    .default("BANK_TRANSFER"),
+  transactionReference: z.string().trim().max(100).optional(),
+});
+
+export const markMonthPaidSchema = z.object({
+  monthYear: z
+    .string()
+    .regex(monthYearRegex, "Month-Year must be in YYYY-MM format (e.g. 2026-11)"),
+  paymentMethod: z
+    .enum(["BANK_TRANSFER", "UPI", "CHEQUE", "CASH"])
+    .default("BANK_TRANSFER"),
+  transactionReference: z.string().trim().max(100).optional(),
+});
+
 export type RunPayrollInput = z.infer<typeof runPayrollSchema>;
 export type AdjustPayrollInput = z.infer<typeof adjustPayrollSchema>;
 export type FinalizePayrollInput = z.infer<typeof finalizePayrollSchema>;
+export type MarkPaidInput = z.infer<typeof markPaidSchema>;
+export type MarkMonthPaidInput = z.infer<typeof markMonthPaidSchema>;
 
 export interface PayrollQueryFilters {
   monthYear?: string;
   status?: PayrollStatus;
+  isPaid?: boolean;
 }

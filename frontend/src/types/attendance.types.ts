@@ -81,3 +81,35 @@ export interface AttendanceHistoryResponse {
   page: number;
   limit: number;
 }
+
+export interface BiometricImportError {
+  row: number;
+  email?: string;
+  reason: string;
+}
+
+export interface BiometricImportResult {
+  importId: string;
+  fileName: string;
+  totalRows: number;
+  successfulRows: number;
+  failedRows: number;
+  errorLog: BiometricImportError[];
+  uploadedAt: string;
+}
+
+export interface BiometricImportHistoryItem {
+  _id: string;
+  fileName: string;
+  uploadedBy: {
+    _id: string;
+    username: string;
+    email: string;
+    role?: string;
+  };
+  totalRows: number;
+  successfulRows: number;
+  failedRows: number;
+  errorLog: BiometricImportError[];
+  uploadedAt: string;
+}

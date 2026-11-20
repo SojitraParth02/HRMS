@@ -27,10 +27,13 @@ import { emitToUser } from "../socket";
 import {
   IPayrollDocument,
   PayrollStatus,
+  PaymentMethod,
 } from "../models/payroll.model";
 import {
   AdjustPayrollInput,
   PayrollQueryFilters,
+  MarkPaidInput,
+  MarkMonthPaidInput,
 } from "../types/payroll.types";
 import {
   BadRequestError,
@@ -295,6 +298,149 @@ export class PayrollService {
     }
 
     return { finalizedCount, monthYear };
+  }
+
+  public async markRecordPaid(
+    id: string,
+    input: MarkPaidInput,
+    paidById: string
+  ): Promise<IPayrollDocument> {
+    const record = await this.payrollRepo.findPayrollById(id);
+    if (!record) {
+      throw new NotFoundError("Payroll record not found.");
+    }
+
+    if (record.status !== "FINALIZED") {
+      throw new BadRequestError(
+        "Only finalized payroll records can be marked as paid. Please finalize the payroll cycle first."
+      );
+    }
+
+    if (record.isPaid) {
+      throw new BadRequestError("This salary record has already been marked as paid.");
+    }
+
+    const paidAt = new Date();
+    const paidByObjectId = new Types.ObjectId(paidById);
+    const paymentMethod: PaymentMethod = input.paymentMethod || "BANK_TRANSFER";
+
+    const updated = await this.payrollRepo.markRecordPaid(
+      id,
+      paidByObjectId,
+      paidAt,
+      paymentMethod,
+      input.transactionReference
+    );
+
+    if (!updated) {
+      throw new NotFoundError("Failed to update salary payment status.");
+    }
+
+    const recipientId = String(
+      (record.userId as { _id?: Types.ObjectId })._id || record.userId
+    );
+
+    const formattedAmount = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(record.netSalary);
+
+    // Send Real-Time Salary Disbursed Notification to Employee
+    const notification = await this.notifRepo.createNotification({
+      recipientId: new Types.ObjectId(recipientId),
+      targetRole: null,
+      type: "SALARY_DISBURSED",
+      title: "Salary Disbursed",
+      message: `Your net salary of ${formattedAmount} for ${record.monthYear} has been disbursed via ${paymentMethod.replace("_", " ")}${
+        input.transactionReference ? ` (Ref: ${input.transactionReference})` : ""
+      }.`,
+      link: "/payroll",
+      isRead: false,
+      metadata: {
+        payrollId: id,
+        monthYear: record.monthYear,
+        netSalary: record.netSalary,
+        paymentMethod,
+        transactionReference: input.transactionReference,
+      },
+    });
+
+    emitToUser(recipientId, "notification:new", notification);
+
+    return updated;
+  }
+
+  public async markMonthPaid(
+    input: MarkMonthPaidInput,
+    paidById: string
+  ): Promise<{ disbursedCount: number; monthYear: string }> {
+    const monthYear = input.monthYear;
+    const finalizedRecords = await this.payrollRepo.findPayrollByMonth(
+      monthYear,
+      "FINALIZED"
+    );
+
+    if (finalizedRecords.length === 0) {
+      throw new BadRequestError(
+        `No finalized payroll records found for ${monthYear} to disburse.`
+      );
+    }
+
+    const unpaidRecords = finalizedRecords.filter((r) => !r.isPaid);
+    if (unpaidRecords.length === 0) {
+      throw new BadRequestError(
+        `All finalized salaries for ${monthYear} have already been marked as paid.`
+      );
+    }
+
+    const paidAt = new Date();
+    const paidByObjectId = new Types.ObjectId(paidById);
+    const paymentMethod: PaymentMethod = input.paymentMethod || "BANK_TRANSFER";
+
+    const disbursedCount = await this.payrollRepo.markMonthPaid(
+      monthYear,
+      paidByObjectId,
+      paidAt,
+      paymentMethod,
+      input.transactionReference
+    );
+
+    // Notify each disbursed employee
+    for (const record of unpaidRecords) {
+      const recipientId = String(
+        (record.userId as { _id?: Types.ObjectId })._id || record.userId
+      );
+
+      const formattedAmount = new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 0,
+      }).format(record.netSalary);
+
+      const notification = await this.notifRepo.createNotification({
+        recipientId: new Types.ObjectId(recipientId),
+        targetRole: null,
+        type: "SALARY_DISBURSED",
+        title: "Salary Disbursed",
+        message: `Your net salary of ${formattedAmount} for ${monthYear} has been disbursed via ${paymentMethod.replace("_", " ")}${
+          input.transactionReference ? ` (Ref: ${input.transactionReference})` : ""
+        }.`,
+        link: "/payroll",
+        isRead: false,
+        metadata: {
+          payrollId: String(record._id),
+          monthYear,
+          netSalary: record.netSalary,
+          paymentMethod,
+          transactionReference: input.transactionReference,
+        },
+      });
+
+      emitToUser(recipientId, "notification:new", notification);
+    }
+
+    return { disbursedCount, monthYear };
   }
 
   public async getPayrollRecords(

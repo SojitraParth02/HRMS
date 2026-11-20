@@ -9,7 +9,8 @@ export type NotificationType =
   | "OVERTIME_APPROVED"
   | "OVERTIME_REJECTED"
   | "ADVANCE_LOGGED"
-  | "PAYROLL_FINALIZED";
+  | "PAYROLL_FINALIZED"
+  | "SALARY_DISBURSED";
 
 export interface NotificationItem {
   _id: string;
