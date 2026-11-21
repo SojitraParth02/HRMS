@@ -16,7 +16,7 @@ export const apiClient: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 10000,
+  timeout: 45000, // 45 seconds to accommodate Render free-tier cold starts
 });
 
 apiClient.interceptors.request.use(
@@ -38,7 +38,11 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => {
     return response;
   },
-  (error: AxiosError): Promise<never> => {
+  (error: AxiosError<{ message?: string }>): Promise<never> => {
+    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+      error.message = "Server is waking up from sleep. Please wait a moment and try again.";
+    }
+
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         store.dispatch(logout());
