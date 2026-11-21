@@ -17,6 +17,7 @@ import {
 } from "../repositories/notification.repository";
 import { employeeRepository, EmployeeRepository } from "../repositories/employee.repository";
 import { emitToHR, emitToUser } from "../socket";
+import { UserModel } from "../models/user.model";
 import {
   IAttendance,
   IAttendanceDocument,
@@ -287,23 +288,36 @@ export class AttendanceService {
 
   public async getAllAttendanceRoster(
     dateStr?: string,
-    department?: string
-  ): Promise<IAttendanceDocument[]> {
+    department?: string,
+    page?: number,
+    limit?: number,
+    search?: string
+  ): Promise<{ roster: IAttendanceDocument[]; total: number }> {
     const targetDate = dateStr
       ? this.normalizeToMidnight(new Date(dateStr))
       : this.normalizeToMidnight(new Date());
 
     let userIds: string[] | undefined = undefined;
 
-    if (department) {
-      const allEmployees = await this.employeeRepo.getAllEmployees();
-      const filtered = allEmployees.filter(
-        (emp) => emp.department.toLowerCase() === department.toLowerCase()
-      );
-      userIds = filtered.map((emp) => String(emp._id));
+    if (department || (search && search.trim())) {
+      const userQuery: Record<string, unknown> = {};
+      if (department) {
+        userQuery.department = department;
+      }
+      if (search && search.trim()) {
+        const regex = new RegExp(search.trim(), "i");
+        userQuery.$or = [
+          { username: regex },
+          { email: regex },
+          { department: regex },
+          { designation: regex },
+        ];
+      }
+      const matchingUsers = await UserModel.find(userQuery, "_id").exec();
+      userIds = matchingUsers.map((emp) => String(emp._id));
     }
 
-    return await this.attendanceRepo.findAllRoster(targetDate, userIds);
+    return await this.attendanceRepo.findAllRoster(targetDate, userIds, page, limit);
   }
 
   public async submitCorrectionRequest(
@@ -377,9 +391,11 @@ export class AttendanceService {
   }
 
   public async getCorrections(
-    status?: CorrectionStatus
-  ): Promise<IAttendanceCorrectionDocument[]> {
-    return await this.correctionRepo.findAllCorrections(status);
+    status?: CorrectionStatus,
+    page?: number,
+    limit?: number
+  ): Promise<{ corrections: IAttendanceCorrectionDocument[]; total: number }> {
+    return await this.correctionRepo.findAllCorrections(status, page, limit);
   }
 
   public async reviewCorrection(

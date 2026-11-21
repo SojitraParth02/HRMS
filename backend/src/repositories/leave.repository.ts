@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { UserModel } from "../models/user.model";
 import {
   LeaveModel,
   ILeave,
@@ -84,9 +85,28 @@ export class LeaveRepository {
   public async findAllLeaves(
     status?: LeaveStatus,
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
+    search?: string
   ): Promise<{ records: ILeaveDocument[]; total: number }> {
-    const query = status ? { status } : {};
+    const query: Record<string, unknown> = status ? { status } : {};
+
+    if (search && search.trim()) {
+      const regex = new RegExp(search.trim(), "i");
+      const matchingUsers = await UserModel.find(
+        {
+          $or: [
+            { username: regex },
+            { email: regex },
+            { department: regex },
+            { designation: regex },
+          ],
+        },
+        "_id"
+      ).exec();
+      const userIds = matchingUsers.map((u) => u._id);
+      query.userId = { $in: userIds };
+    }
+
     const skip = (page - 1) * limit;
 
     const [records, total] = await Promise.all([

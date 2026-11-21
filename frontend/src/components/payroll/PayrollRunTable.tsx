@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PayrollData,
   EmployeeSummary,
@@ -10,9 +10,12 @@ import {
   useRunPayrollMutation,
   useFinalizePayrollMutation,
 } from "../../hooks/queries/usePayroll";
+import { useDebounce } from "../../hooks/useDebounce";
+import { HighlightText } from "../common/HighlightText";
 import { PayrollAdjustmentModal } from "./PayrollAdjustmentModal";
 import { PayslipModal } from "./PayslipModal";
 import { MarkPaidModal } from "./MarkPaidModal";
+import { Pagination } from "../common/Pagination";
 import {
   PaymentsIcon,
   CheckCircleIcon,
@@ -28,6 +31,9 @@ export const PayrollRunTable: React.FC = () => {
   const currentMonthYear = new Date().toISOString().slice(0, 7);
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(currentMonthYear);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const debouncedSearch = useDebounce(searchQuery, 350);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
   const [selectedForAdjustment, setSelectedForAdjustment] = useState<PayrollData | null>(null);
   const [selectedForPayslip, setSelectedForPayslip] = useState<PayrollData | null>(null);
   const [selectedForPayment, setSelectedForPayment] = useState<PayrollData | null>(null);
@@ -35,7 +41,13 @@ export const PayrollRunTable: React.FC = () => {
   const [isFinalizeConfirmOpen, setIsFinalizeConfirmOpen] = useState<boolean>(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const { data: payrolls = [], isLoading, isFetching } = usePayrollRecordsQuery(selectedMonthYear);
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedMonthYear]);
+
+  const { data: payrollResponse, isLoading, isFetching } = usePayrollRecordsQuery(selectedMonthYear, debouncedSearch, page, limit);
+  const payrolls = payrollResponse?.data ?? [];
+  const pagination = payrollResponse?.pagination;
   const runMutation = useRunPayrollMutation();
   const finalizeMutation = useFinalizePayrollMutation();
 
@@ -88,16 +100,6 @@ export const PayrollRunTable: React.FC = () => {
       setFeedbackMsg({ type: "error", text: msg });
     }
   };
-
-  const filteredPayrolls = payrolls.filter((p) => {
-    if (!searchQuery) return true;
-    const emp = typeof p.userId === "object" ? (p.userId as EmployeeSummary) : null;
-    return (
-      emp?.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp?.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      emp?.designation?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
 
   const totalDisbursement = payrolls.reduce((sum, p) => sum + p.netSalary, 0);
 
@@ -248,14 +250,18 @@ export const PayrollRunTable: React.FC = () => {
             <div className="w-8 h-8 rounded-full border-4 border-teal-600 border-t-transparent animate-spin" />
             <span>Loading payroll records for {selectedMonthYear}...</span>
           </div>
-        ) : filteredPayrolls.length === 0 ? (
+        ) : payrolls.length === 0 ? (
           <div className="p-12 text-center text-slate-500 space-y-3">
             <PaymentsIcon className="w-10 h-10 text-slate-300 mx-auto" />
             <p className="text-sm font-bold text-slate-700">
-              No payroll calculated for {selectedMonthYear}
+              {debouncedSearch
+                ? `No payroll records matching "${debouncedSearch}"`
+                : `No payroll calculated for ${selectedMonthYear}`}
             </p>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Click &quot;Calculate Draft Payroll&quot; above to run the 26-Day Divisor engine for all active employees.
+              {debouncedSearch
+                ? "Try searching with a different employee name, department, or designation."
+                : "Click \"Calculate Draft Payroll\" above to run the 26-Day Divisor engine for all active employees."}
             </p>
           </div>
         ) : (
@@ -276,7 +282,7 @@ export const PayrollRunTable: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                {filteredPayrolls.map((payroll) => {
+                {payrolls.map((payroll) => {
                   const emp =
                     typeof payroll.userId === "object"
                       ? (payroll.userId as EmployeeSummary)
@@ -295,10 +301,21 @@ export const PayrollRunTable: React.FC = () => {
                           </div>
                           <div>
                             <p className="font-bold text-slate-900 leading-tight">
-                              {emp?.username || "Employee"}
+                              <HighlightText
+                                text={emp?.username || "Employee"}
+                                query={debouncedSearch}
+                              />
                             </p>
                             <p className="text-[10px] text-slate-400">
-                              {emp?.department || "General"} • {emp?.designation || "Staff"}
+                              <HighlightText
+                                text={emp?.department || "General"}
+                                query={debouncedSearch}
+                              />
+                              {" • "}
+                              <HighlightText
+                                text={emp?.designation || "Staff"}
+                                query={debouncedSearch}
+                              />
                             </p>
                           </div>
                         </div>
@@ -457,6 +474,18 @@ export const PayrollRunTable: React.FC = () => {
             </table>
           </div>
         )}
+
+        <Pagination
+          currentPage={pagination?.currentPage || page}
+          pageSize={pagination?.pageSize || limit}
+          totalRecords={pagination?.totalRecords || 0}
+          totalPages={pagination?.totalPages || 1}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => {
+            setLimit(s);
+            setPage(1);
+          }}
+        />
       </div>
 
       {/* Finalize Confirmation Modal */}

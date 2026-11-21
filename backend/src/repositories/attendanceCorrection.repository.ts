@@ -30,14 +30,25 @@ export class AttendanceCorrectionRepository {
   }
 
   public async findAllCorrections(
-    status?: CorrectionStatus
-  ): Promise<IAttendanceCorrectionDocument[]> {
+    status?: CorrectionStatus,
+    page?: number,
+    limit?: number
+  ): Promise<{ corrections: IAttendanceCorrectionDocument[]; total: number }> {
     const query = status ? { status } : {};
-    return await AttendanceCorrectionModel.find(query)
+    const total = await AttendanceCorrectionModel.countDocuments(query).exec();
+
+    let queryBuilder = AttendanceCorrectionModel.find(query)
       .populate("userId", "username email department designation role")
       .populate("attendanceId")
-      .sort({ createdAt: -1 })
-      .exec();
+      .sort({ createdAt: -1 });
+
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      queryBuilder = queryBuilder.skip(skip).limit(limit);
+    }
+
+    const corrections = await queryBuilder.exec();
+    return { corrections, total };
   }
 
   public async updateStatus(

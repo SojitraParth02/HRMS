@@ -7,8 +7,8 @@ import {
 import {
   SalaryAdvanceData,
   CreateAdvanceInput,
-  AdvanceListResponse,
 } from "../../types/payroll.types";
+import { IPaginatedResponse } from "../../types/pagination.types";
 
 export const ADVANCE_KEYS = {
   all: ["advances"] as const,
@@ -25,10 +25,11 @@ export const useAdvancesQuery = (
     userId?: string;
     page?: number;
     limit?: number;
+    search?: string;
   },
   enabled: boolean = true
 ) => {
-  return useQuery<AdvanceListResponse, Error>({
+  return useQuery<IPaginatedResponse<SalaryAdvanceData>, Error>({
     queryKey: ADVANCE_KEYS.list(filters),
     queryFn: () => getAdvancesAPI(filters),
     enabled,
@@ -36,8 +37,8 @@ export const useAdvancesQuery = (
   });
 };
 
-export const useMyAdvancesQuery = (page: number = 1, limit: number = 20) => {
-  return useQuery<AdvanceListResponse, Error>({
+export const useMyAdvancesQuery = (page: number = 1, limit: number = 10) => {
+  return useQuery<IPaginatedResponse<SalaryAdvanceData>, Error>({
     queryKey: ADVANCE_KEYS.my(page, limit),
     queryFn: () => getMyAdvancesAPI(page, limit),
     staleTime: 60 * 1000,

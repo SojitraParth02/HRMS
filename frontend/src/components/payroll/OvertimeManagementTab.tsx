@@ -13,6 +13,9 @@ import {
   EmployeeSummary,
 } from "../../types/payroll.types";
 import { OvertimeRequestModal } from "./OvertimeRequestModal";
+import { Pagination } from "../common/Pagination";
+import { HighlightText } from "../common/HighlightText";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   AccessTimeIcon,
   CheckCircleIcon,
@@ -20,6 +23,7 @@ import {
   WarningIcon,
   AddIcon,
   FilterListIcon,
+  SearchIcon,
 } from "../icons";
 
 export const OvertimeManagementTab: React.FC = () => {
@@ -28,13 +32,22 @@ export const OvertimeManagementTab: React.FC = () => {
     currentUser?.role === "HR" || currentUser?.role === "ADMIN";
 
   const [statusFilter, setStatusFilter] = useState<OvertimeStatus | "ALL">("ALL");
+  const [otSearch, setOtSearch] = useState<string>("");
+  const debouncedOtSearch = useDebounce(otSearch, 350);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState<boolean>(false);
+  const [myPage, setMyPage] = useState<number>(1);
+  const [myLimit, setMyLimit] = useState<number>(10);
+  const [allPage, setAllPage] = useState<number>(1);
+  const [allLimit, setAllLimit] = useState<number>(10);
 
   // Queries
-  const { data: myData, isLoading: isMyLoading } = useMyOvertimeQuery(1, 50);
+  const { data: myData, isLoading: isMyLoading } = useMyOvertimeQuery(myPage, myLimit);
   const { data: allData, isLoading: isAllLoading } = useAllOvertimeQuery(
     {
       status: statusFilter === "ALL" ? undefined : statusFilter,
+      search: debouncedOtSearch || undefined,
+      page: allPage,
+      limit: allLimit,
     },
     isPrivileged
   );
@@ -63,7 +76,7 @@ export const OvertimeManagementTab: React.FC = () => {
     }
   };
 
-  const pendingApprovals = (allData?.records || []).filter(
+  const pendingApprovals = (allData?.data || []).filter(
     (ot) => ot.status === "PENDING"
   );
 
@@ -191,26 +204,44 @@ export const OvertimeManagementTab: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-2xs overflow-hidden">
         {/* Filter Bar for HR */}
         {isPrivileged && (
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
             <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <FilterListIcon className="w-4 h-4 text-teal-700" />
               Workforce Overtime Ledger
             </span>
-            <div className="flex items-center gap-1.5">
-              {(["ALL", "PENDING", "APPROVED", "REJECTED"] as const).map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer ${
-                    statusFilter === st
-                      ? "bg-teal-600 text-white shadow-xs"
-                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-56">
+                <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={otSearch}
+                  onChange={(e) => {
+                    setOtSearch(e.target.value);
+                    setAllPage(1);
+                  }}
+                  placeholder="Search overtime..."
+                  className="w-full pl-9 pr-3.5 py-1 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 bg-white"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                {(["ALL", "PENDING", "APPROVED", "REJECTED"] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => {
+                      setStatusFilter(st);
+                      setAllPage(1);
+                    }}
+                    className={`px-3 py-1 rounded-xl text-[11px] font-bold transition cursor-pointer ${
+                      statusFilter === st
+                        ? "bg-teal-600 text-white shadow-xs"
+                        : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -219,34 +250,98 @@ export const OvertimeManagementTab: React.FC = () => {
         {isPrivileged ? (
           isAllLoading ? (
             <div className="p-12 text-center text-xs text-slate-400">Loading overtime records...</div>
-          ) : (allData?.records || []).length === 0 ? (
+          ) : (allData?.data || []).length === 0 ? (
             <div className="p-12 text-center text-slate-400 text-xs">No overtime requests found.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Employee</th>
-                    <th className="py-3 px-3">Date</th>
-                    <th className="py-3 px-3">Time Range</th>
-                    <th className="py-3 px-3">Duration</th>
-                    <th className="py-3 px-4">Task Description</th>
-                    <th className="py-3 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {(allData?.records || []).map((ot) => {
-                    const emp =
-                      typeof ot.userId === "object"
-                        ? (ot.userId as EmployeeSummary)
-                        : null;
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Employee</th>
+                      <th className="py-3 px-3">Date</th>
+                      <th className="py-3 px-3">Time Range</th>
+                      <th className="py-3 px-3">Duration</th>
+                      <th className="py-3 px-4">Task Description</th>
+                      <th className="py-3 px-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {(allData?.data || []).map((ot) => {
+                      const emp =
+                        typeof ot.userId === "object"
+                          ? (ot.userId as EmployeeSummary)
+                          : null;
 
-                    return (
+                      return (
+                        <tr key={ot._id} className="hover:bg-teal-50/20">
+                          <td className="py-3 px-4 font-bold text-slate-800">
+                            <HighlightText
+                              text={emp?.username || "Employee"}
+                              query={debouncedOtSearch}
+                            />
+                          </td>
+                          <td className="py-3 px-3 text-slate-600">
+                            {new Date(ot.date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-600">
+                            {ot.startTime} – {ot.endTime}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-teal-800 font-mono">
+                            {ot.hours}h
+                          </td>
+                          <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={ot.taskDescription}>
+                            {ot.taskDescription}
+                          </td>
+                          <td className="py-3 px-3">{renderStatusBadge(ot.status)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                currentPage={allData?.pagination?.currentPage || allPage}
+                pageSize={allData?.pagination?.pageSize || allLimit}
+                totalRecords={allData?.pagination?.totalRecords || 0}
+                totalPages={allData?.pagination?.totalPages || 1}
+                onPageChange={(p) => setAllPage(p)}
+                onPageSizeChange={(s) => {
+                  setAllLimit(s);
+                  setAllPage(1);
+                }}
+              />
+            </>
+          )
+        ) : (
+          /* Employee Self-Service View */
+          isMyLoading ? (
+            <div className="p-12 text-center text-xs text-slate-400">Loading your overtime log...</div>
+          ) : (myData?.data || []).length === 0 ? (
+            <div className="p-12 text-center text-slate-400 text-xs">
+              You haven&apos;t submitted any overtime requests yet.
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-3">Time Range</th>
+                      <th className="py-3 px-3">Hours</th>
+                      <th className="py-3 px-4">Task Description</th>
+                      <th className="py-3 px-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {(myData?.data || []).map((ot) => (
                       <tr key={ot._id} className="hover:bg-teal-50/20">
-                        <td className="py-3 px-4 font-bold text-slate-800">
-                          {emp?.username || "Employee"}
-                        </td>
-                        <td className="py-3 px-3 text-slate-600">
+                        <td className="py-3 px-4 font-semibold text-slate-800">
                           {new Date(ot.date).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
@@ -259,62 +354,27 @@ export const OvertimeManagementTab: React.FC = () => {
                         <td className="py-3 px-3 font-bold text-teal-800 font-mono">
                           {ot.hours}h
                         </td>
-                        <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={ot.taskDescription}>
+                        <td className="py-3 px-4 text-slate-600 max-w-sm truncate" title={ot.taskDescription}>
                           {ot.taskDescription}
                         </td>
                         <td className="py-3 px-3">{renderStatusBadge(ot.status)}</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )
-        ) : (
-          /* Employee Self-Service View */
-          isMyLoading ? (
-            <div className="p-12 text-center text-xs text-slate-400">Loading your overtime log...</div>
-          ) : (myData?.records || []).length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-xs">
-              You haven&apos;t submitted any overtime requests yet.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-3">Time Range</th>
-                    <th className="py-3 px-3">Hours</th>
-                    <th className="py-3 px-4">Task Description</th>
-                    <th className="py-3 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {(myData?.records || []).map((ot) => (
-                    <tr key={ot._id} className="hover:bg-teal-50/20">
-                      <td className="py-3 px-4 font-semibold text-slate-800">
-                        {new Date(ot.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="py-3 px-3 font-mono text-slate-600">
-                        {ot.startTime} – {ot.endTime}
-                      </td>
-                      <td className="py-3 px-3 font-bold text-teal-800 font-mono">
-                        {ot.hours}h
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 max-w-sm truncate" title={ot.taskDescription}>
-                        {ot.taskDescription}
-                      </td>
-                      <td className="py-3 px-3">{renderStatusBadge(ot.status)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                currentPage={myData?.pagination?.currentPage || myPage}
+                pageSize={myData?.pagination?.pageSize || myLimit}
+                totalRecords={myData?.pagination?.totalRecords || 0}
+                totalPages={myData?.pagination?.totalPages || 1}
+                onPageChange={(p) => setMyPage(p)}
+                onPageSizeChange={(s) => {
+                  setMyLimit(s);
+                  setMyPage(1);
+                }}
+              />
+            </>
           )
         )}
       </div>

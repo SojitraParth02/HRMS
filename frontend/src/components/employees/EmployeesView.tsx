@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAppSelector } from "../../hooks/redux";
 import {
   useEmployeesQuery,
@@ -12,6 +12,9 @@ import { User } from "../../types/auth.types";
 import { AddEmployeeModal } from "./AddEmployeeModal";
 import { EditEmployeeModal } from "./EditEmployeeModal";
 import { DeactivateConfirmationModal } from "./DeactivateConfirmationModal";
+import { Pagination } from "../common/Pagination";
+import { HighlightText } from "../common/HighlightText";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   AddIcon,
   SearchIcon,
@@ -52,8 +55,32 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
   initialEmployees,
   isLoading: propsIsLoading,
 }) => {
-  const { data: queryEmployees = [], isLoading: queryIsLoading, isError, refetch } = useEmployeesQuery();
-  const employees = initialEmployees ?? queryEmployees;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const debouncedSearch = useDebounce(searchQuery, 350);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("All Departments");
+  const [selectedRole, setSelectedRole] = useState<string>("All Roles");
+
+  const deptParam = selectedDepartment === "All Departments" ? undefined : selectedDepartment;
+  const roleParam = selectedRole === "All Roles" ? undefined : selectedRole;
+  const searchParam = debouncedSearch.trim() || undefined;
+
+  const { data: response, isLoading: queryIsLoading, isError, refetch } = useEmployeesQuery(
+    currentPage,
+    pageSize,
+    searchParam,
+    deptParam,
+    roleParam
+  );
+
+  const employees = initialEmployees ?? response?.data ?? [];
+  const pagination = response?.pagination ?? {
+    currentPage,
+    pageSize,
+    totalRecords: employees.length,
+    totalPages: Math.ceil(employees.length / pageSize) || 1,
+  };
   const isLoading = propsIsLoading ?? queryIsLoading;
 
   const currentUser: User | null = useAppSelector((state) => state.auth.user);
@@ -66,14 +93,16 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [deactivatingEmployee, setDeactivatingEmployee] = useState<Employee | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("All Departments");
-  const [selectedRole, setSelectedRole] = useState<string>("All Roles");
 
-  // Client-side filtering across search query, department, and role
-  const filteredEmployees: Employee[] = useMemo(() => {
-    return employees.filter((emp: Employee) => {
-      const query: string = searchQuery.toLowerCase().trim();
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedDepartment, selectedRole]);
+
+  // If initialEmployees was provided via SSR props, filter client-side; otherwise use server-filtered results
+  const displayedEmployees: Employee[] = useMemo(() => {
+    if (!initialEmployees) return employees;
+    return initialEmployees.filter((emp: Employee) => {
+      const query: string = debouncedSearch.toLowerCase().trim();
       const matchesSearch: boolean =
         !query ||
         emp.username.toLowerCase().includes(query) ||
@@ -91,7 +120,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
 
       return matchesSearch && matchesDept && matchesRole;
     });
-  }, [employees, searchQuery, selectedDepartment, selectedRole]);
+  }, [initialEmployees, employees, debouncedSearch, selectedDepartment, selectedRole]);
 
   const getDaysRemaining = (deactivatedAt?: string | null): number => {
     if (!deactivatedAt) return 30;
@@ -195,7 +224,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
               Employees
             </h1>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800">
-              {employees.length} Total
+              {pagination.totalRecords} Total
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
@@ -298,7 +327,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
               Retry
             </button>
           </div>
-        ) : filteredEmployees.length === 0 ? (
+        ) : displayedEmployees.length === 0 ? (
           <div className="p-12 text-center">
             <GroupIcon className="w-12 h-12 text-slate-300 mx-auto" />
             <h3 className="mt-3 text-sm font-semibold text-slate-800">
@@ -357,7 +386,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs sm:text-sm text-slate-700">
-                {filteredEmployees.map((emp) => (
+                {displayedEmployees.map((emp) => (
                   <tr
                     key={emp.id}
                     className="hover:bg-slate-50/70 transition-colors"
@@ -370,10 +399,10 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-900 truncate">
-                            {emp.username}
+                            <HighlightText text={emp.username} query={debouncedSearch} />
                           </p>
                           <p className="text-xs text-slate-400 truncate">
-                            {emp.email}
+                            <HighlightText text={emp.email} query={debouncedSearch} />
                           </p>
                         </div>
                       </div>
@@ -386,17 +415,17 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
 
                     {/* Department */}
                     <td className="px-4 py-3.5 whitespace-nowrap font-medium text-slate-700">
-                      {emp.department || "—"}
+                      <HighlightText text={emp.department || "—"} query={debouncedSearch} />
                     </td>
 
                     {/* Designation */}
                     <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
-                      {emp.designation || "—"}
+                      <HighlightText text={emp.designation || "—"} query={debouncedSearch} />
                     </td>
 
                     {/* Phone */}
                     <td className="px-4 py-3.5 whitespace-nowrap text-slate-600 font-mono text-xs">
-                      {emp.phone || "—"}
+                      <HighlightText text={emp.phone || "—"} query={debouncedSearch} />
                     </td>
 
                     {/* Monthly Salary */}
@@ -474,6 +503,18 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
             </table>
           </div>
         )}
+
+        <Pagination
+          currentPage={pagination.currentPage}
+          pageSize={pagination.pageSize}
+          totalRecords={pagination.totalRecords}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+        />
       </div>
 
       {/* Add Employee Modal */}

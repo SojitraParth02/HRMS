@@ -8,6 +8,7 @@ import {
   ForbiddenError,
 } from "../utils/errors";
 import { LeaveStatus } from "../models/leave.model";
+import { formatPaginatedResponse } from "../utils/pagination";
 
 export class LeaveController {
   constructor(private readonly service: LeaveService = leaveService) {}
@@ -89,10 +90,7 @@ export class LeaveController {
         : 20;
 
       const result = await this.service.getMyLeaves(user.id, page, limit);
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }
@@ -113,17 +111,16 @@ export class LeaveController {
       const limit = req.query.limit
         ? parseInt(String(req.query.limit), 10)
         : 20;
+      const search = req.query.search ? String(req.query.search) : undefined;
 
       const result = await this.service.getAllLeaves(
         user.role,
         status,
         page,
-        limit
+        limit,
+        search
       );
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }

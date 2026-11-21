@@ -11,6 +11,7 @@ import {
   ForbiddenError,
 } from "../utils/errors";
 import { OvertimeStatus } from "../models/overtime.model";
+import { formatPaginatedResponse } from "../utils/pagination";
 
 export class OvertimeController {
   constructor(
@@ -106,10 +107,7 @@ export class OvertimeController {
         : 20;
 
       const result = await this.service.getMyOvertime(user.id, page, limit);
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }
@@ -132,6 +130,7 @@ export class OvertimeController {
       const limit = req.query.limit
         ? parseInt(String(req.query.limit), 10)
         : 20;
+      const search = req.query.search ? String(req.query.search) : undefined;
 
       const result = await this.service.getAllOvertime({
         status,
@@ -140,12 +139,10 @@ export class OvertimeController {
         userId,
         page,
         limit,
+        search,
       });
 
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }

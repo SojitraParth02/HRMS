@@ -1437,4 +1437,117 @@ The following items are genuinely missing or partial in the codebase and represe
 
 ---
 
-> **Notice to Developers**: When beginning Module 2 (Employee Management & RBAC), update this document only after new routes, models, or components are committed and functional.
+## 19. Standardized Dr.Ex Pagination Architecture & Table Integration
+
+### 19.1 System-Wide Design Standard
+To ensure high performance, minimal memory footprints, and low query latencies as datasets scale, all tabular interfaces implement the standardized Dr.Ex server-side pagination architecture.
+
+### 19.2 Standardized Backend Pagination Envelope (`backend/src/utils/pagination.ts`)
+All paginated REST API responses strictly conform to the unified JSON envelope:
+```json
+{
+  "status": "success",
+  "data": [...],
+  "pagination": {
+    "currentPage": 1,
+    "pageSize": 10,
+    "totalRecords": 125,
+    "totalPages": 13
+  }
+}
+```
+- **Standard Utility**: `formatPaginatedResponse<T>(data: T[], page: number, limit: number, totalRecords: number): IPaginatedResponse<T>`.
+- **Database Query Pattern**: Strict Mongoose `.skip((page - 1) * limit).limit(limit)` paired with `countDocuments(filter)` execution in repository methods (`employee.repository.ts`, `attendance.repository.ts`, `attendanceCorrection.repository.ts`, `leave.repository.ts`, `payroll.repository.ts`, `overtime.repository.ts`, `salaryAdvance.repository.ts`).
+
+### 19.3 Reusable Frontend Component (`frontend/src/components/common/Pagination.tsx`)
+- **Props**: `currentPage`, `pageSize`, `totalRecords`, `totalPages`, `onPageChange(page: number)`, `onPageSizeChange(size: number)`.
+- **Capabilities**:
+  - Rows per page selector with choices: `[10, 25, 50]`.
+  - Record bound display: "Showing X to Y of Z records".
+  - Accessible Prev and Next navigation controls with automated boundary disabling.
+  - Dynamic page numbering with intelligent ellipsis (`...`) for large page sets.
+
+### 19.4 10 Data Tables Coverage Matrix
+1. **Employee Directory (`/employees`)**: Server-side paginated via `getPaginatedEmployees` with search, department, and role filters.
+2. **Personal Attendance History (`/attendance`)**: Server-side paginated via `getMyAttendanceHistory` with date range support.
+3. **Daily Attendance Roster (`/attendance`)**: Server-side paginated via `findAllRoster` with date and department filters.
+4. **Attendance Correction Queue (`/attendance`)**: Server-side paginated via `findAllCorrections` with status filters.
+5. **My Leaves History (`/leaves`)**: Server-side paginated via `getMyLeaves` with quota splits.
+6. **Workforce Leave Review Queue (`/leaves`)**: Server-side paginated via `getAllLeaves` with status review actions.
+7. **Monthly Payroll Run Ledger (`/payroll`)**: Server-side paginated via `findPayrollByMonthPaginated` with month-year cycle selection.
+8. **Overtime Requests Queue (`/payroll`)**: Server-side paginated for both workforce ledger (`getAllOvertime`) and personal submissions (`getMyOvertime`).
+9. **Salary Advance Ledger (`/payroll`)**: Server-side paginated for both workforce ledger (`getAllAdvances`) and personal advances (`getMyAdvances`).
+10. **Employee My-Payslips Grid (`/payroll`)**: Server-side paginated via `getUserPayslips` with payslip generation preview.
+- **Enterprise Reports (`/reports` - Attendance, Payroll, Overtime)**: Features client-side table slicing (`.slice((page-1)*limit, page*limit)`) with `<Pagination />` controls while preserving full date-range data in memory to guarantee un-truncated RFC-4180 CSV exports.
+
+---
+
+## 20. Standardized Dr.Ex Search Engine Architecture & Visual Highlighting
+
+### 20.1 Architecture Overview & Dr.Ex Alignment
+The HRMS system implements a unified, scalable Search Engine adhering 100% to the Dr.Ex reference architecture. Search is executed server-side across the entire database collection prior to pagination, eliminating single-page search clipping. Queries are debounced on the frontend by 350ms to safeguard API throughput and database connection pools. Matching keyword substrings are dynamically highlighted across table cells using a standardized amber visual treatment.
+
+### 20.2 Shared Frontend Utilities
+
+#### 1. Reusable Debounce Hook (`frontend/src/hooks/useDebounce.ts`)
+- **Signature**: `useDebounce<T>(value: T, delay: number = 350): T`
+- **Behavior**: Uses React `useState` and `useEffect` with `setTimeout` to debounce keystrokes. Cancels pending timers on subsequent input changes, ensuring TanStack Query keys are updated only when typing pauses.
+
+#### 2. Reusable Highlighting Component (`frontend/src/components/common/HighlightText.tsx`)
+- **Props**: `text?: string | null`, `query?: string | null`
+- **Behavior**:
+  - Null-safe: gracefully returns empty string for nullish or empty text.
+  - Returns raw text if `query` is empty or whitespace-only.
+  - Escapes special regex characters (`[.*+?^${}()|[\]\\]`) to prevent runtime regex errors.
+  - Splits text using case-insensitive RegExp `new RegExp(`(${escapedQuery})`, "gi")`.
+  - Wraps matching segments in:
+    ```tsx
+    <mark className="bg-amber-100 text-amber-900 font-semibold px-0.5 rounded">
+      {part}
+    </mark>
+    ```
+
+### 20.3 Backend Relational Server-Side Search Engine
+
+#### Relational User ID Resolution Pattern
+Secondary operational collections (`payrolls`, `attendances`, `leaves`, `overtime_requests`, `salary_advances`) reference employees via `userId: ObjectId`. To enable search by employee name, email, department, or designation:
+1. When `search` is provided in query parameters, the service executes a relational lookup on `UserModel`:
+   ```typescript
+   const searchRegex = new RegExp(search.trim(), "i");
+   const matchedUsers = await UserModel.find(
+     {
+       $or: [
+         { username: searchRegex },
+         { email: searchRegex },
+         { department: searchRegex },
+         { designation: searchRegex },
+       ],
+     },
+     "_id"
+   ).lean();
+   const userIds = matchedUsers.map((u) => u._id);
+   ```
+2. The resolved `userIds` are supplied to the secondary collection's filter criteria:
+   ```typescript
+   filter.userId = { $in: userIds };
+   ```
+3. If no employees match the search query, `userIds` is empty `[]`, resulting in `filter.userId = { $in: [] }` which instantly evaluates to 0 records without scanning the full collection.
+4. Dynamic counts (`countDocuments`) and paginated slices (`.skip().limit()`) are computed on the filtered subset and returned via `formatPaginatedResponse`.
+
+### 20.4 Module-by-Module Search Engine Integration
+
+| Module / Table | Search Layer | Search Fields Indexed | Highlighting Integration |
+| :--- | :--- | :--- | :--- |
+| **Employee Directory (`/employees`)** | Backend Server-Side (`UserModel.find`) | `username`, `email`, `department`, `designation` | Name, Email, Department, Designation cells |
+| **Workforce Attendance Roster (`/attendance`)** | Backend Server-Side (`AttendanceModel` via relational `UserModel`) | `username`, `email`, `department`, `designation` | Employee name, Email, Department cells |
+| **Leave Review Queue (`/leaves`)** | Backend Server-Side (`LeaveModel` via relational `UserModel`) | `username`, `email`, `department`, `designation` | Employee name, Department, Email cells |
+| **Monthly Payroll Run (`/payroll`)** | Backend Server-Side (`PayrollModel` via relational `UserModel`) | `username`, `email`, `department`, `designation` | Employee name, Email, Department cells |
+| **Workforce Overtime Ledger (`/payroll`)** | Backend Server-Side (`OvertimeRequestModel` via relational `UserModel`) | `username`, `email`, `department`, `designation` | Employee name cell |
+| **Salary Advance Ledger (`/payroll`)** | Backend Server-Side (`SalaryAdvanceModel` via relational `UserModel`) | `username`, `email`, `department`, `designation` | Employee name cell |
+| **Attendance Report (`/reports`)** | Frontend In-Memory (for un-truncated RFC-4180 CSV export) | `username`, `email`, `department`, `designation` | Employee name, Email, Designation, Department cells |
+| **Payroll Expenditure Report (`/reports`)** | Frontend In-Memory (for un-truncated RFC-4180 CSV export) | `username`, `email`, `department`, `designation`, `status` | Employee name, Email, Designation, Department cells |
+| **Overtime Utilization Report (`/reports`)** | Frontend In-Memory (for un-truncated RFC-4180 CSV export) | `username`, `email`, `department`, `designation` | Employee name, Email, Designation, Department cells |
+
+---
+
+> **Notice to Developers**: When beginning new modules or updating existing endpoints, ensure server-side pagination and relational search patterns strictly conform to Sections 19 and 20.

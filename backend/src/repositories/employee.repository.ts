@@ -31,6 +31,48 @@ export class EmployeeRepository {
   }
 
   /**
+   * Retrieves paginated users/employees with optional filtering by search term, department, and role.
+   */
+  public async getPaginatedEmployees(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+    department?: string,
+    role?: string
+  ): Promise<{ employees: IUserDocument[]; total: number }> {
+    const skip = (page - 1) * limit;
+    const query: Record<string, unknown> = {};
+
+    if (department && department !== "All Departments") {
+      query.department = department;
+    }
+    if (role && role !== "All Roles") {
+      query.role = role;
+    }
+    if (search && search.trim()) {
+      const regex = new RegExp(search.trim(), "i");
+      query.$or = [
+        { username: regex },
+        { email: regex },
+        { phone: regex },
+        { designation: regex },
+      ];
+    }
+
+    const [employees, total] = await Promise.all([
+      UserModel.find(query)
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      UserModel.countDocuments(query).exec(),
+    ]);
+
+    return { employees, total };
+  }
+
+  /**
    * Updates an existing employee's details (username, phone, department, designation, salary, role, joiningDate).
    */
   public async updateEmployee(

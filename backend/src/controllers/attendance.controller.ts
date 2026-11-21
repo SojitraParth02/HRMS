@@ -12,6 +12,7 @@ import {
   ForbiddenError,
 } from "../utils/errors";
 import { CorrectionStatus } from "../models/attendanceCorrection.model";
+import { formatPaginatedResponse } from "../utils/pagination";
 
 export class AttendanceController {
   constructor(
@@ -125,10 +126,7 @@ export class AttendanceController {
         endDate
       );
 
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }
@@ -140,15 +138,18 @@ export class AttendanceController {
       const department = req.query.department
         ? String(req.query.department)
         : undefined;
+      const page = req.query.page ? parseInt(String(req.query.page), 10) : 1;
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 10;
+      const search = req.query.search ? String(req.query.search) : undefined;
 
-      const roster = await this.service.getAllAttendanceRoster(
+      const { roster, total } = await this.service.getAllAttendanceRoster(
         date,
-        department
+        department,
+        page,
+        limit,
+        search
       );
-      res.status(200).json({
-        status: "success",
-        data: { roster },
-      });
+      res.status(200).json(formatPaginatedResponse(roster, page, limit, total));
     } catch (error) {
       this.handleError(error, res);
     }
@@ -188,12 +189,11 @@ export class AttendanceController {
       const status = req.query.status
         ? (String(req.query.status) as CorrectionStatus)
         : undefined;
-      const corrections = await this.service.getCorrections(status);
+      const page = req.query.page ? parseInt(String(req.query.page), 10) : 1;
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 10;
+      const { corrections, total } = await this.service.getCorrections(status, page, limit);
 
-      res.status(200).json({
-        status: "success",
-        data: { corrections },
-      });
+      res.status(200).json(formatPaginatedResponse(corrections, page, limit, total));
     } catch (error) {
       this.handleError(error, res);
     }

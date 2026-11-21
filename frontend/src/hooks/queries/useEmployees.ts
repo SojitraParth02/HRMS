@@ -3,16 +3,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { employeeService } from "../../services/employee.service";
 import { CreateEmployeeInput, UpdateEmployeeInput, Employee } from "../../types/employee.types";
+import { IPaginatedResponse } from "../../types/pagination.types";
 
 export const EMPLOYEES_QUERY_KEY = ["employees"] as const;
 
 /**
- * React Query hook to fetch the employee roster with automatic caching and background refresh.
+ * React Query hook to fetch the paginated employee roster with automatic caching and background refresh.
  */
-export const useEmployeesQuery = () => {
-  return useQuery<Employee[], Error>({
-    queryKey: EMPLOYEES_QUERY_KEY,
-    queryFn: employeeService.getEmployees,
+export const useEmployeesQuery = (
+  page: number = 1,
+  limit: number = 10,
+  search?: string,
+  department?: string,
+  role?: string
+) => {
+  return useQuery<IPaginatedResponse<Employee>, Error>({
+    queryKey: ["employees", { page, limit, search, department, role }],
+    queryFn: () => employeeService.getEmployees(page, limit, search, department, role),
     staleTime: 1000 * 60 * 5, // 5 minutes fresh
   });
 };

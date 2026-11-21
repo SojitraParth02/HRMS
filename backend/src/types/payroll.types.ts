@@ -51,4 +51,7 @@ export interface PayrollQueryFilters {
   monthYear?: string;
   status?: PayrollStatus;
   isPaid?: boolean;
+  page?: number;
+  limit?: number;
+  search?: string;
 }

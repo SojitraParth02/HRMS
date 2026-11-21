@@ -11,6 +11,9 @@ import {
 } from "../../hooks/queries/useLeaves";
 import { LeaveRecord, LeaveStatus, LeaveBalanceData } from "../../types/leave.types";
 import { ApplyLeaveModal } from "./ApplyLeaveModal";
+import { Pagination } from "../common/Pagination";
+import { HighlightText } from "../common/HighlightText";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   CalendarIcon,
   CheckCircleIcon,
@@ -21,6 +24,7 @@ import {
   GroupIcon,
   PersonIcon,
   SettingsIcon,
+  SearchIcon,
 } from "../icons";
 
 export interface LeaveManagementViewProps {
@@ -40,13 +44,22 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
     useLeaveBalanceQuery();
   const balanceData = initialBalanceData ?? queryBalanceData;
   const isBalanceLoading = propsIsLoading ?? queryIsBalanceLoading;
-  const { data: myLeavesData } = useMyLeavesQuery(1, 30);
+
+  const [myPage, setMyPage] = useState<number>(1);
+  const [myLimit, setMyLimit] = useState<number>(10);
+  const { data: myLeavesData } = useMyLeavesQuery(myPage, myLimit);
+
+  const [allPage, setAllPage] = useState<number>(1);
+  const [allLimit, setAllLimit] = useState<number>(10);
+  const [leaveSearch, setLeaveSearch] = useState<string>("");
+  const debouncedLeaveSearch = useDebounce(leaveSearch, 350);
   const { data: allLeavesData, isLoading: isAllLeavesLoading } =
     useAllLeavesQuery(
       undefined,
-      1,
-      50,
-      isPrivileged
+      allPage,
+      allLimit,
+      isPrivileged,
+      debouncedLeaveSearch
     );
 
   const reviewMutation = useReviewLeaveMutation();
@@ -55,7 +68,7 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
   const [isApplyModalOpen, setIsApplyModalOpen] = useState<boolean>(false);
 
   const pendingCount =
-    allLeavesData?.records.filter((r) => r.status === "PENDING").length ?? 0;
+    allLeavesData?.data?.filter((r) => r.status === "PENDING").length ?? 0;
 
   const handleReview = async (
     leaveId: string,
@@ -197,11 +210,10 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
         {/* Remaining Paid Leaves */}
         <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex items-center gap-3.5">
           <div
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-              (balanceData?.remainingPaidDays ?? 0) > 0
-                ? "bg-emerald-50 text-emerald-700"
-                : "bg-rose-50 text-rose-700"
-            }`}
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${(balanceData?.remainingPaidDays ?? 0) > 0
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-rose-50 text-rose-700"
+              }`}
           >
             <CheckCircleIcon className="w-5 h-5" />
           </div>
@@ -210,11 +222,10 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
               Remaining Paid Balance
             </p>
             <p
-              className={`text-xl font-black mt-0.5 ${
-                (balanceData?.remainingPaidDays ?? 0) > 0
-                  ? "text-emerald-700"
-                  : "text-rose-600"
-              }`}
+              className={`text-xl font-black mt-0.5 ${(balanceData?.remainingPaidDays ?? 0) > 0
+                ? "text-emerald-700"
+                : "text-rose-600"
+                }`}
             >
               {isBalanceLoading ? "--" : `${balanceData?.remainingPaidDays ?? 0} Days`}
             </p>
@@ -242,11 +253,10 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab("my")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
-            activeTab === "my"
-              ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
-              : "text-slate-600 hover:bg-slate-100"
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${activeTab === "my"
+            ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
+            : "text-slate-600 hover:bg-slate-100"
+            }`}
         >
           <PersonIcon className="w-4 h-4" />
           <span>My Leave History</span>
@@ -256,11 +266,10 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab("review")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
-              activeTab === "review"
-                ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
-                : "text-slate-600 hover:bg-slate-100"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${activeTab === "review"
+              ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
+              : "text-slate-600 hover:bg-slate-100"
+              }`}
           >
             <GroupIcon className="w-4 h-4" />
             <span>Workforce Review Queue</span>
@@ -281,7 +290,7 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
               Personal Applications Log
             </h3>
             <span className="text-xs text-slate-500 font-medium">
-              Total Applications: {myLeavesData?.total ?? 0}
+              Total Applications: {myLeavesData?.pagination?.totalRecords ?? 0}
             </span>
           </div>
 
@@ -297,7 +306,7 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {!myLeavesData?.records || myLeavesData.records.length === 0 ? (
+                {!myLeavesData?.data || myLeavesData.data.length === 0 ? (
                   <tr>
                     <td
                       colSpan={5}
@@ -307,7 +316,7 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  myLeavesData.records.map((leave) => {
+                  myLeavesData.data.map((leave) => {
                     const startStr = new Date(
                       leave.startDate
                     ).toLocaleDateString("en-US", {
@@ -369,19 +378,47 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={myLeavesData?.pagination?.currentPage || myPage}
+            pageSize={myLeavesData?.pagination?.pageSize || myLimit}
+            totalRecords={myLeavesData?.pagination?.totalRecords || 0}
+            totalPages={myLeavesData?.pagination?.totalPages || 1}
+            onPageChange={(p) => setMyPage(p)}
+            onPageSizeChange={(s) => {
+              setMyLimit(s);
+              setMyPage(1);
+            }}
+          />
         </div>
       )}
 
       {/* Tab Content 2: Workforce Review Queue (HR / Admin View) */}
       {activeTab === "review" && isPrivileged && (
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-xs sm:text-sm font-bold text-slate-800">
-              Workforce Applications Queue
-            </h3>
-            <span className="text-xs text-slate-500 font-medium">
-              Total Records: {allLeavesData?.total ?? 0}
-            </span>
+          <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-800">
+                Workforce Applications Queue
+              </h3>
+              <span className="text-xs text-slate-500 font-medium">
+                Total Records: {allLeavesData?.pagination?.totalRecords ?? 0}
+              </span>
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={leaveSearch}
+                onChange={(e) => {
+                  setLeaveSearch(e.target.value);
+                  setAllPage(1);
+                }}
+                placeholder="Search leave applications..."
+                className="w-full pl-9 pr-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 bg-slate-50"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -406,8 +443,8 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
                       Loading leave applications...
                     </td>
                   </tr>
-                ) : !allLeavesData?.records ||
-                  allLeavesData.records.length === 0 ? (
+                ) : !allLeavesData?.data ||
+                  allLeavesData.data.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -417,7 +454,7 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  allLeavesData.records.map((leave) => {
+                  allLeavesData.data.map((leave) => {
                     const emp =
                       typeof leave.userId === "object" ? leave.userId : null;
                     const startStr = new Date(
@@ -445,9 +482,22 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
                       >
                         <td className="px-4 py-3 font-semibold text-slate-900">
                           <div>
-                            <p>{emp?.username ?? "Unknown"}</p>
+                            <p>
+                              <HighlightText
+                                text={emp?.username ?? "Unknown"}
+                                query={debouncedLeaveSearch}
+                              />
+                            </p>
                             <p className="text-[10px] text-slate-400 font-normal">
-                              {emp?.department ?? "--"} • {emp?.email ?? ""}
+                              <HighlightText
+                                text={emp?.department ?? "--"}
+                                query={debouncedLeaveSearch}
+                              />
+                              {" • "}
+                              <HighlightText
+                                text={emp?.email ?? ""}
+                                query={debouncedLeaveSearch}
+                              />
                             </p>
                           </div>
                         </td>
@@ -498,6 +548,18 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={allLeavesData?.pagination?.currentPage || allPage}
+            pageSize={allLeavesData?.pagination?.pageSize || allLimit}
+            totalRecords={allLeavesData?.pagination?.totalRecords || 0}
+            totalPages={allLeavesData?.pagination?.totalPages || 1}
+            onPageChange={(p) => setAllPage(p)}
+            onPageSizeChange={(s) => {
+              setAllLimit(s);
+              setAllPage(1);
+            }}
+          />
         </div>
       )}
 

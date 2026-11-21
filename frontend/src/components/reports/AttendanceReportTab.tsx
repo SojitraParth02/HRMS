@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useAttendanceReportQuery } from "../../hooks/queries/useReports";
 import { AttendanceReportRecord } from "../../types/reports.types";
 import { ReportSummaryCards, ReportSummaryItem } from "./ReportSummaryCards";
 import { ReportFilterBar } from "./ReportFilterBar";
 import { exportToCsv, CsvColumn } from "../../utils/csvExport";
+import { Pagination } from "../common/Pagination";
+import { HighlightText } from "../common/HighlightText";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   AccessTimeIcon,
   CheckCircleIcon,
@@ -28,6 +31,13 @@ export const AttendanceReportTab: React.FC = () => {
 
   const [department, setDepartment] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const debouncedSearch = useDebounce(searchQuery, 350);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [startDate, endDate, department, debouncedSearch]);
 
   const { data, isLoading } = useAttendanceReportQuery({
     startDate,
@@ -40,8 +50,8 @@ export const AttendanceReportTab: React.FC = () => {
 
   // Filter records by client search query
   const filteredRecords = useMemo(() => {
-    if (!searchQuery.trim()) return records;
-    const q = searchQuery.toLowerCase().trim();
+    if (!debouncedSearch.trim()) return records;
+    const q = debouncedSearch.toLowerCase().trim();
     return records.filter(
       (r) =>
         r.username.toLowerCase().includes(q) ||
@@ -49,7 +59,13 @@ export const AttendanceReportTab: React.FC = () => {
         r.department.toLowerCase().includes(q) ||
         r.designation.toLowerCase().includes(q)
     );
-  }, [records, searchQuery]);
+  }, [records, debouncedSearch]);
+
+  const totalPages = Math.ceil(filteredRecords.length / pageSize) || 1;
+  const paginatedRecords = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, currentPage, pageSize]);
 
   // Handle CSV Export
   const handleExportCsv = () => {
@@ -159,7 +175,7 @@ export const AttendanceReportTab: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredRecords.map((rec) => (
+                {paginatedRecords.map((rec) => (
                   <tr
                     key={rec.userId}
                     className="hover:bg-teal-50/20 transition-colors"
@@ -171,16 +187,18 @@ export const AttendanceReportTab: React.FC = () => {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 leading-tight">
-                            {rec.username}
+                            <HighlightText text={rec.username} query={debouncedSearch} />
                           </p>
                           <p className="text-[10px] text-slate-400">
-                            {rec.email} • {rec.designation}
+                            <HighlightText text={rec.email} query={debouncedSearch} /> • <HighlightText text={rec.designation} query={debouncedSearch} />
                           </p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-3 px-3 text-slate-600">{rec.department}</td>
+                    <td className="py-3 px-3 text-slate-600">
+                      <HighlightText text={rec.department} query={debouncedSearch} />
+                    </td>
 
                     <td className="py-3 px-3 text-center font-bold text-slate-800 font-mono">
                       {rec.totalRecordedDays}
@@ -226,6 +244,20 @@ export const AttendanceReportTab: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
+
+        {filteredRecords.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            pageSize={pageSize}
+            totalRecords={filteredRecords.length}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+          />
         )}
       </div>
     </div>

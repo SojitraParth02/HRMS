@@ -8,19 +8,19 @@ import {
 } from "../../services/leave.service";
 import {
   LeaveBalanceData,
-  LeaveHistoryResponse,
   LeaveRecord,
   ApplyLeaveInput,
   ReviewLeaveInput,
   LeaveStatus,
 } from "../../types/leave.types";
+import { IPaginatedResponse } from "../../types/pagination.types";
 
 export const LEAVE_KEYS = {
   balance: ["leaves", "balance"] as const,
   myLeaves: (page: number, limit: number) =>
     ["leaves", "my-leaves", { page, limit }] as const,
-  allLeaves: (status?: LeaveStatus, page?: number, limit?: number) =>
-    ["leaves", "all", { status, page, limit }] as const,
+  allLeaves: (status?: LeaveStatus, page?: number, limit?: number, search?: string) =>
+    ["leaves", "all", { status, page, limit, search }] as const,
 };
 
 export const useLeaveBalanceQuery = () => {
@@ -31,8 +31,8 @@ export const useLeaveBalanceQuery = () => {
   });
 };
 
-export const useMyLeavesQuery = (page: number = 1, limit: number = 20) => {
-  return useQuery<LeaveHistoryResponse, Error>({
+export const useMyLeavesQuery = (page: number = 1, limit: number = 10) => {
+  return useQuery<IPaginatedResponse<LeaveRecord>, Error>({
     queryKey: LEAVE_KEYS.myLeaves(page, limit),
     queryFn: () => getMyLeaves(page, limit),
     staleTime: 60 * 1000,
@@ -42,12 +42,13 @@ export const useMyLeavesQuery = (page: number = 1, limit: number = 20) => {
 export const useAllLeavesQuery = (
   status?: LeaveStatus,
   page: number = 1,
-  limit: number = 20,
-  enabled: boolean = true
+  limit: number = 10,
+  enabled: boolean = true,
+  search?: string
 ) => {
-  return useQuery<LeaveHistoryResponse, Error>({
-    queryKey: LEAVE_KEYS.allLeaves(status, page, limit),
-    queryFn: () => getAllLeaves(status, page, limit),
+  return useQuery<IPaginatedResponse<LeaveRecord>, Error>({
+    queryKey: LEAVE_KEYS.allLeaves(status, page, limit, search),
+    queryFn: () => getAllLeaves(status, page, limit, search),
     enabled,
     staleTime: 60 * 1000,
   });

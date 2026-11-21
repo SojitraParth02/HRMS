@@ -211,6 +211,7 @@ export class OvertimeService {
         startDate,
         endDate,
         userId: filters.userId,
+        search: filters.search,
       },
       page,
       limit

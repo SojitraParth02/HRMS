@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { employeeService, EmployeeService } from "../services/employee.service";
 import { CreateEmployeeInput, UpdateEmployeeInput, IEmployee, UserRole } from "../types/employee.types";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "../utils/errors";
+import { formatPaginatedResponse } from "../utils/pagination";
 
 export class EmployeeController {
   private readonly service: EmployeeService;
@@ -77,17 +78,23 @@ export class EmployeeController {
   /**
    * HTTP GET handler to retrieve the list of all registered employees.
    */
-  public async getEmployees(_req: Request, res: Response): Promise<void> {
+  public async getEmployees(req: Request, res: Response): Promise<void> {
     try {
-      const employees: IEmployee[] = await this.service.getAllEmployeesService();
+      const page = req.query.page ? parseInt(String(req.query.page), 10) : 1;
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 10;
+      const search = req.query.search ? String(req.query.search) : undefined;
+      const department = req.query.department ? String(req.query.department) : undefined;
+      const role = req.query.role ? String(req.query.role) : undefined;
 
-      res.status(200).json({
-        status: "success",
-        data: {
-          employees,
-          total: employees.length,
-        },
-      });
+      const { employees, total } = await this.service.getPaginatedEmployeesService(
+        page,
+        limit,
+        search,
+        department,
+        role
+      );
+
+      res.status(200).json(formatPaginatedResponse(employees, page, limit, total));
     } catch (error) {
       const message: string = error instanceof Error ? error.message : "Internal server error";
       res.status(500).json({

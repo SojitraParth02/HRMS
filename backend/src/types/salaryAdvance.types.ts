@@ -24,4 +24,5 @@ export interface AdvanceFilters {
   userId?: string;
   page?: number;
   limit?: number;
+  search?: string;
 }

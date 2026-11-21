@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useEmployeesQuery } from "../../hooks/queries/useEmployees";
 import { useLogAdvanceMutation } from "../../hooks/queries/useAdvances";
+import { Employee } from "../../types/employee.types";
 import { CloseIcon, WarningIcon, CheckIcon, PaymentsIcon } from "../icons";
 
 interface LogAdvanceModalProps {
@@ -25,11 +26,12 @@ export const LogAdvanceModal: React.FC<LogAdvanceModalProps> = ({
   const [reason, setReason] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { data: employees = [], isLoading: isEmployeesLoading } =
-    useEmployeesQuery();
+  const { data: employeesResponse, isLoading: isEmployeesLoading } =
+    useEmployeesQuery(1, 100);
+  const employees: Employee[] = employeesResponse?.data || [];
   const logMutation = useLogAdvanceMutation();
 
-  const eligibleEmployees = employees.filter((emp) => emp.role !== "ADMIN");
+  const eligibleEmployees = employees.filter((emp: Employee) => emp.role !== "ADMIN");
 
   if (!isOpen) return null;
 

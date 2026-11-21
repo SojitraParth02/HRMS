@@ -99,6 +99,7 @@ export class SalaryAdvanceService {
         monthYear: filters.monthYear,
         isDeducted: filters.isDeducted,
         userId: filters.userId,
+        search: filters.search,
       },
       page,
       limit

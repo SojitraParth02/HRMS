@@ -14,18 +14,18 @@ import {
   PayrollStatus,
   AdjustPayrollInput,
   PayrollListResponse,
-  UserPayslipsResponse,
   FinalizePayrollResponse,
   MarkPaidInput,
   MarkMonthPaidInput,
   MarkMonthPaidResponse,
 } from "../../types/payroll.types";
+import { IPaginatedResponse } from "../../types/pagination.types";
 import { ADVANCE_KEYS } from "./useAdvances";
 
 export const PAYROLL_KEYS = {
   all: ["payroll"] as const,
-  records: (monthYear?: string, status?: string) =>
-    ["payroll", "records", { monthYear, status }] as const,
+  records: (monthYear?: string, status?: string, page?: number, limit?: number, search?: string) =>
+    ["payroll", "records", { monthYear, status, page, limit, search }] as const,
   myPayslips: (page: number, limit: number) =>
     ["payroll", "my-payslips", { page, limit }] as const,
   payslip: (id: string) => ["payroll", "payslip", id] as const,
@@ -33,19 +33,22 @@ export const PAYROLL_KEYS = {
 
 export const usePayrollRecordsQuery = (
   monthYear?: string,
+  search?: string,
+  page: number = 1,
+  limit: number = 10,
   status?: PayrollStatus,
   enabled: boolean = true
 ) => {
-  return useQuery<PayrollData[], Error>({
-    queryKey: PAYROLL_KEYS.records(monthYear, status),
-    queryFn: () => getPayrollRecordsAPI(monthYear, status),
+  return useQuery<IPaginatedResponse<PayrollData>, Error>({
+    queryKey: PAYROLL_KEYS.records(monthYear, status, page, limit, search),
+    queryFn: () => getPayrollRecordsAPI(monthYear, status, page, limit, search),
     enabled,
     staleTime: 60 * 1000,
   });
 };
 
-export const useMyPayslipsQuery = (page: number = 1, limit: number = 20) => {
-  return useQuery<UserPayslipsResponse, Error>({
+export const useMyPayslipsQuery = (page: number = 1, limit: number = 10) => {
+  return useQuery<IPaginatedResponse<PayrollData>, Error>({
     queryKey: PAYROLL_KEYS.myPayslips(page, limit),
     queryFn: () => getMyPayslipsAPI(page, limit),
     staleTime: 60 * 1000,

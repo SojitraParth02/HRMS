@@ -10,6 +10,7 @@ import {
   ConflictError,
   ForbiddenError,
 } from "../utils/errors";
+import { formatPaginatedResponse } from "../utils/pagination";
 
 export class SalaryAdvanceController {
   constructor(
@@ -78,6 +79,7 @@ export class SalaryAdvanceController {
       const limit = req.query.limit
         ? parseInt(String(req.query.limit), 10)
         : 20;
+      const search = req.query.search ? String(req.query.search) : undefined;
 
       const result = await this.service.getAllAdvances({
         monthYear,
@@ -85,12 +87,10 @@ export class SalaryAdvanceController {
         userId,
         page,
         limit,
+        search,
       });
 
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }
@@ -113,10 +113,7 @@ export class SalaryAdvanceController {
         : 20;
 
       const result = await this.service.getMyAdvances(user.id, page, limit);
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }

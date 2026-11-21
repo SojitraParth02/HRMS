@@ -81,6 +81,29 @@ export class EmployeeService {
   }
 
   /**
+   * Retrieves paginated registered employees, sanitized of sensitive credentials.
+   */
+  public async getPaginatedEmployeesService(
+    page: number = 1,
+    limit: number = 10,
+    search?: string,
+    department?: string,
+    role?: string
+  ): Promise<{ employees: IEmployee[]; total: number }> {
+    const { employees, total } = await this.repository.getPaginatedEmployees(
+      page,
+      limit,
+      search,
+      department,
+      role
+    );
+    return {
+      employees: employees.map((emp) => this.mapToSanitizedEmployee(emp)),
+      total,
+    };
+  }
+
+  /**
    * Deactivates (soft deletes) an employee account:
    * - Enforces self-preservation rule (Admin cannot deactivate themselves)
    * - Enforces HR ceiling barrier (HR cannot deactivate HR or Admin accounts)

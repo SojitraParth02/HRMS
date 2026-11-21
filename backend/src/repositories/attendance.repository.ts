@@ -70,18 +70,29 @@ export class AttendanceRepository {
 
   public async findAllRoster(
     date: Date,
-    userIds?: string[]
-  ): Promise<IAttendanceDocument[]> {
+    userIds?: string[],
+    page?: number,
+    limit?: number
+  ): Promise<{ roster: IAttendanceDocument[]; total: number }> {
     const query: Record<string, unknown> = { date };
 
-    if (userIds && userIds.length > 0) {
+    if (userIds !== undefined) {
       query.userId = { $in: userIds.map((id) => new Types.ObjectId(id)) };
     }
 
-    return await AttendanceModel.find(query)
+    const total = await AttendanceModel.countDocuments(query).exec();
+
+    let queryBuilder = AttendanceModel.find(query)
       .populate("userId", "username email department designation role")
-      .sort({ punchIn: 1 })
-      .exec();
+      .sort({ punchIn: 1 });
+
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      queryBuilder = queryBuilder.skip(skip).limit(limit);
+    }
+
+    const roster = await queryBuilder.exec();
+    return { roster, total };
   }
 }
 

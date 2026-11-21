@@ -27,31 +27,34 @@ export const applyLeave = async (
   return response.data.data;
 };
 
+import { IPaginatedResponse } from "../types/pagination.types";
+
 export const getMyLeaves = async (
   page: number = 1,
-  limit: number = 20
-): Promise<LeaveHistoryResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: LeaveHistoryResponse;
-  }>("/api/leaves/my-leaves", {
-    params: { page, limit },
-  });
-  return response.data.data;
+  limit: number = 10
+): Promise<IPaginatedResponse<LeaveRecord>> => {
+  const response = await apiClient.get<IPaginatedResponse<LeaveRecord>>(
+    "/api/leaves/my-leaves",
+    {
+      params: { page, limit },
+    }
+  );
+  return response.data;
 };
 
 export const getAllLeaves = async (
   status?: LeaveStatus,
   page: number = 1,
-  limit: number = 20
-): Promise<LeaveHistoryResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: LeaveHistoryResponse;
-  }>("/api/leaves/all", {
-    params: { status, page, limit },
-  });
-  return response.data.data;
+  limit: number = 10,
+  search?: string
+): Promise<IPaginatedResponse<LeaveRecord>> => {
+  const response = await apiClient.get<IPaginatedResponse<LeaveRecord>>(
+    "/api/leaves/all",
+    {
+      params: { status, page, limit, search },
+    }
+  );
+  return response.data;
 };
 
 export const reviewLeave = async (

@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { UserModel } from "../models/user.model";
 import {
   SalaryAdvanceModel,
   ISalaryAdvance,
@@ -44,6 +45,7 @@ export class SalaryAdvanceRepository {
       monthYear?: string;
       isDeducted?: boolean;
       userId?: string;
+      search?: string;
     },
     page: number = 1,
     limit: number = 20
@@ -58,6 +60,23 @@ export class SalaryAdvanceRepository {
     }
     if (filters.userId) {
       query.userId = new Types.ObjectId(filters.userId);
+    }
+
+    if (filters.search && filters.search.trim()) {
+      const regex = new RegExp(filters.search.trim(), "i");
+      const matchingUsers = await UserModel.find(
+        {
+          $or: [
+            { username: regex },
+            { email: regex },
+            { department: regex },
+            { designation: regex },
+          ],
+        },
+        "_id"
+      ).exec();
+      const userIds = matchingUsers.map((u) => u._id);
+      query.userId = { $in: userIds };
     }
 
     const skip = (page - 1) * limit;

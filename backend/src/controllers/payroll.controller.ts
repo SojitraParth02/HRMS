@@ -11,6 +11,7 @@ import {
   ForbiddenError,
 } from "../utils/errors";
 import { PayrollStatus } from "../models/payroll.model";
+import { formatPaginatedResponse } from "../utils/pagination";
 
 export class PayrollController {
   constructor(
@@ -76,16 +77,19 @@ export class PayrollController {
         ? String(req.query.monthYear)
         : undefined;
       const status = req.query.status as PayrollStatus | undefined;
+      const page = req.query.page ? parseInt(String(req.query.page), 10) : 1;
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 10;
+      const search = req.query.search ? String(req.query.search) : undefined;
 
-      const records = await this.service.getPayrollRecords({
+      const { records, total } = await this.service.getPayrollRecords({
         monthYear,
         status,
+        page,
+        limit,
+        search,
       });
 
-      res.status(200).json({
-        status: "success",
-        data: { payrolls: records },
-      });
+      res.status(200).json(formatPaginatedResponse(records, page, limit, total));
     } catch (error) {
       this.handleError(error, res);
     }
@@ -198,10 +202,7 @@ export class PayrollController {
 
       const result = await this.service.getUserPayslips(user.id, page, limit);
 
-      res.status(200).json({
-        status: "success",
-        data: result,
-      });
+      res.status(200).json(formatPaginatedResponse(result.records, page, limit, result.total));
     } catch (error) {
       this.handleError(error, res);
     }

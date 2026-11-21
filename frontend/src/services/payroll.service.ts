@@ -22,17 +22,22 @@ export const runPayrollDraftAPI = async (
   return response.data.data;
 };
 
+import { IPaginatedResponse } from "../types/pagination.types";
+
 export const getPayrollRecordsAPI = async (
   monthYear?: string,
-  status?: PayrollStatus
-): Promise<PayrollData[]> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: { payrolls: PayrollData[] };
-  }>("/api/payroll", {
-    params: { monthYear, status },
-  });
-  return response.data.data.payrolls;
+  status?: PayrollStatus,
+  page: number = 1,
+  limit: number = 10,
+  search?: string
+): Promise<IPaginatedResponse<PayrollData>> => {
+  const response = await apiClient.get<IPaginatedResponse<PayrollData>>(
+    "/api/payroll",
+    {
+      params: { monthYear, status, page, limit, search },
+    }
+  );
+  return response.data;
 };
 
 export const adjustPayrollAPI = async (
@@ -60,15 +65,15 @@ export const finalizePayrollAPI = async (
 
 export const getMyPayslipsAPI = async (
   page: number = 1,
-  limit: number = 20
-): Promise<UserPayslipsResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: UserPayslipsResponse;
-  }>("/api/payroll/my-payslips", {
-    params: { page, limit },
-  });
-  return response.data.data;
+  limit: number = 10
+): Promise<IPaginatedResponse<PayrollData>> => {
+  const response = await apiClient.get<IPaginatedResponse<PayrollData>>(
+    "/api/payroll/my-payslips",
+    {
+      params: { page, limit },
+    }
+  );
+  return response.data;
 };
 
 export const getPayslipDetailsAPI = async (

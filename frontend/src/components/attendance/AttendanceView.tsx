@@ -21,6 +21,9 @@ import {
 import { CorrectionModal } from "./CorrectionModal";
 import { BiometricImportModal } from "./BiometricImportModal";
 import { downloadSampleBiometricCSV } from "../../utils/sampleBiometricCSV";
+import { Pagination } from "../common/Pagination";
+import { HighlightText } from "../common/HighlightText";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   AccessTimeIcon,
   CheckCircleIcon,
@@ -32,6 +35,7 @@ import {
   SettingsIcon,
   UploadFileIcon,
   DownloadIcon,
+  SearchIcon,
 } from "../icons";
 
 const formatTime12h = (dateStr?: string | null): string => {
@@ -106,11 +110,34 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     useTodayAttendanceQuery();
   const todayData = initialTodayData ?? queryTodayData;
   const isTodayLoading = propsIsLoading ?? queryIsTodayLoading;
-  const { data: historyData } = useMyAttendanceHistoryQuery(1, 30);
-  const { data: correctionsData } = useCorrectionsQuery(
-    "PENDING",
-    isPrivileged
+
+  // Pagination states for all 3 tables
+  const [historyPage, setHistoryPage] = useState<number>(1);
+  const [historyLimit, setHistoryLimit] = useState<number>(10);
+  const { data: historyData } = useMyAttendanceHistoryQuery(historyPage, historyLimit);
+
+  // Workforce Roster Filter & Pagination States
+  const [rosterDate, setRosterDate] = useState<string>(
+    new Date().toISOString().split("T")[0]
   );
+  const [rosterDept, setRosterDept] = useState<string>("");
+  const [rosterSearch, setRosterSearch] = useState<string>("");
+  const debouncedRosterSearch = useDebounce(rosterSearch, 350);
+  const [rosterPage, setRosterPage] = useState<number>(1);
+  const [rosterLimit, setRosterLimit] = useState<number>(10);
+
+  // Pending Corrections Pagination States
+  const [correctionsPage, setCorrectionsPage] = useState<number>(1);
+  const [correctionsLimit, setCorrectionsLimit] = useState<number>(10);
+
+  const { data: correctionsResponse } = useCorrectionsQuery(
+    "PENDING",
+    isPrivileged,
+    correctionsPage,
+    correctionsLimit
+  );
+  const correctionsData = correctionsResponse?.data ?? [];
+  const correctionsPagination = correctionsResponse?.pagination;
 
   const punchInMutation = usePunchInMutation();
   const punchOutMutation = usePunchOutMutation();
@@ -130,18 +157,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   // Biometric CSV Import Modal State
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
 
-  // Workforce Roster Filter States
-  const [rosterDate, setRosterDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
-  const [rosterDept, setRosterDept] = useState<string>("");
-
-  const { data: rosterData, isLoading: isRosterLoading } =
+  const { data: rosterResponse, isLoading: isRosterLoading } =
     useAllAttendanceRosterQuery(
       rosterDate,
       rosterDept || undefined,
-      isPrivileged && activeTab === "roster"
+      isPrivileged && activeTab === "roster",
+      rosterPage,
+      rosterLimit,
+      debouncedRosterSearch
     );
+  const rosterData = rosterResponse?.data ?? [];
+  const rosterPagination = rosterResponse?.pagination;
 
   const todayRecord = todayData?.attendance;
   const isPunchedIn = Boolean(todayRecord?.punchIn);
@@ -474,9 +500,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             >
               <AccessTimeIcon className="w-4 h-4" />
               <span>Pending Corrections</span>
-              {correctionsData && correctionsData.length > 0 && (
+              {correctionsPagination && correctionsPagination.totalRecords > 0 && (
                 <span className="px-1.5 py-0.2 bg-rose-500 text-white text-[10px] font-bold rounded-full">
-                  {correctionsData.length}
+                  {correctionsPagination.totalRecords}
                 </span>
               )}
             </button>
@@ -489,10 +515,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
             <h3 className="text-xs sm:text-sm font-bold text-slate-800">
-              Personal Attendance History (Last 30 Days)
+              Personal Attendance History
             </h3>
             <span className="text-xs text-slate-500 font-medium">
-              Total Records: {historyData?.total ?? 0}
+              Total Records: {historyData?.pagination?.totalRecords ?? 0}
             </span>
           </div>
 
@@ -509,7 +535,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {!historyData?.records || historyData.records.length === 0 ? (
+                {!historyData?.data || historyData.data.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -519,7 +545,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  historyData.records.map((rec) => (
+                  historyData.data.map((rec) => (
                     <tr
                       key={rec._id}
                       className="hover:bg-slate-50/80 transition"
@@ -559,6 +585,18 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={historyData?.pagination?.currentPage || historyPage}
+            pageSize={historyData?.pagination?.pageSize || historyLimit}
+            totalRecords={historyData?.pagination?.totalRecords || 0}
+            totalPages={historyData?.pagination?.totalPages || 1}
+            onPageChange={(p) => setHistoryPage(p)}
+            onPageSizeChange={(s) => {
+              setHistoryLimit(s);
+              setHistoryPage(1);
+            }}
+          />
         </div>
       )}
 
@@ -567,7 +605,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden space-y-4 p-4">
           {/* Filters Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
                   Select Date
@@ -575,7 +613,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 <input
                   type="date"
                   value={rosterDate}
-                  onChange={(e) => setRosterDate(e.target.value)}
+                  onChange={(e) => {
+                    setRosterDate(e.target.value);
+                    setRosterPage(1);
+                  }}
                   className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer"
                 />
               </div>
@@ -586,7 +627,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </label>
                 <select
                   value={rosterDept}
-                  onChange={(e) => setRosterDept(e.target.value)}
+                  onChange={(e) => {
+                    setRosterDept(e.target.value);
+                    setRosterPage(1);
+                  }}
                   className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 cursor-pointer"
                 >
                   <option value="">All Departments</option>
@@ -597,10 +641,29 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   <option value="Marketing">Marketing</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">
+                  Search Employee
+                </label>
+                <div className="relative w-full sm:w-56">
+                  <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={rosterSearch}
+                    onChange={(e) => {
+                      setRosterSearch(e.target.value);
+                      setRosterPage(1);
+                    }}
+                    placeholder="Search roster..."
+                    className="w-full pl-9 pr-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20 bg-slate-50"
+                  />
+                </div>
+              </div>
             </div>
 
             <span className="text-xs text-slate-500 font-semibold">
-              Employees Logged: {rosterData?.length ?? 0}
+              Employees Logged: {rosterPagination?.totalRecords ?? 0}
             </span>
           </div>
 
@@ -647,14 +710,25 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       >
                         <td className="px-4 py-3 font-semibold text-slate-900">
                           <div>
-                            <p>{emp?.username ?? "Unknown Employee"}</p>
+                            <p>
+                              <HighlightText
+                                text={emp?.username ?? "Unknown Employee"}
+                                query={debouncedRosterSearch}
+                              />
+                            </p>
                             <p className="text-[10px] text-slate-400 font-normal">
-                              {emp?.email ?? ""}
+                              <HighlightText
+                                text={emp?.email ?? ""}
+                                query={debouncedRosterSearch}
+                              />
                             </p>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-slate-600">
-                          {emp?.department ?? "--"}
+                          <HighlightText
+                            text={emp?.department ?? "--"}
+                            query={debouncedRosterSearch}
+                          />
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-700">
                           {formatTime12h(rec.punchIn)}
@@ -673,6 +747,18 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={rosterPagination?.currentPage || rosterPage}
+            pageSize={rosterPagination?.pageSize || rosterLimit}
+            totalRecords={rosterPagination?.totalRecords || 0}
+            totalPages={rosterPagination?.totalPages || 1}
+            onPageChange={(p) => setRosterPage(p)}
+            onPageSizeChange={(s) => {
+              setRosterLimit(s);
+              setRosterPage(1);
+            }}
+          />
         </div>
       )}
 
@@ -684,7 +770,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               Pending Missed Punch Correction Requests
             </h3>
             <span className="text-xs text-slate-500 font-medium">
-              Queue: {correctionsData?.length ?? 0}
+              Queue: {correctionsPagination?.totalRecords ?? 0}
             </span>
           </div>
 
@@ -774,6 +860,18 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={correctionsPagination?.currentPage || correctionsPage}
+            pageSize={correctionsPagination?.pageSize || correctionsLimit}
+            totalRecords={correctionsPagination?.totalRecords || 0}
+            totalPages={correctionsPagination?.totalPages || 1}
+            onPageChange={(p) => setCorrectionsPage(p)}
+            onPageSizeChange={(s) => {
+              setCorrectionsLimit(s);
+              setCorrectionsPage(1);
+            }}
+          />
         </div>
       )}
 

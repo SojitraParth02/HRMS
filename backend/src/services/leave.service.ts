@@ -167,7 +167,8 @@ export class LeaveService {
     reviewerRole: string,
     status?: LeaveStatus,
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
+    search?: string
   ): Promise<{
     records: ILeaveDocument[];
     total: number;
@@ -183,7 +184,8 @@ export class LeaveService {
     const { records, total } = await this.leaveRepo.findAllLeaves(
       status,
       page,
-      limit
+      limit,
+      search
     );
     return { records, total, page, limit };
   }

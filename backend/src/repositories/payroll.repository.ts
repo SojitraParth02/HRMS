@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { UserModel } from "../models/user.model";
 import {
   PayrollModel,
   IPayroll,
@@ -61,6 +62,52 @@ export class PayrollRepository {
       .populate("paidBy", "username email")
       .sort({ "userId.username": 1, createdAt: 1 })
       .exec()) as IPayrollDocument[];
+  }
+
+  public async findPayrollByMonthPaginated(
+    monthYear: string,
+    status?: PayrollStatus,
+    page: number = 1,
+    limit: number = 10,
+    search?: string
+  ): Promise<{ records: IPayrollDocument[]; total: number }> {
+    const query: Record<string, unknown> = { monthYear };
+    if (status) {
+      query.status = status;
+    }
+
+    if (search && search.trim()) {
+      const regex = new RegExp(search.trim(), "i");
+      const matchingUsers = await UserModel.find(
+        {
+          $or: [
+            { username: regex },
+            { email: regex },
+            { department: regex },
+            { designation: regex },
+          ],
+        },
+        "_id"
+      ).exec();
+      const userIds = matchingUsers.map((u) => u._id);
+      query.userId = { $in: userIds };
+    }
+
+    const skip = (page - 1) * limit;
+    const [records, total] = await Promise.all([
+      PayrollModel.find(query)
+        .populate("userId", "username email department designation phone monthlySalary")
+        .populate("generatedBy", "username email")
+        .populate("finalizedBy", "username email")
+        .populate("paidBy", "username email")
+        .sort({ "userId.username": 1, createdAt: 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      PayrollModel.countDocuments(query).exec(),
+    ]);
+
+    return { records: records as IPayrollDocument[], total };
   }
 
   public async updatePayrollAdjustment(

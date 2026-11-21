@@ -445,18 +445,18 @@ export class PayrollService {
 
   public async getPayrollRecords(
     filters: PayrollQueryFilters
-  ): Promise<IPayrollDocument[]> {
-    if (filters.monthYear) {
-      return await this.payrollRepo.findPayrollByMonth(
-        filters.monthYear,
-        filters.status
-      );
-    }
-    // Default to current month-year if none specified
-    const currentMonthYear = new Date().toISOString().slice(0, 7);
-    return await this.payrollRepo.findPayrollByMonth(
-      currentMonthYear,
-      filters.status
+  ): Promise<{ records: IPayrollDocument[]; total: number }> {
+    const targetMonthYear =
+      filters.monthYear || new Date().toISOString().slice(0, 7);
+    const page = filters.page ? Number(filters.page) : 1;
+    const limit = filters.limit ? Number(filters.limit) : 10;
+
+    return await this.payrollRepo.findPayrollByMonthPaginated(
+      targetMonthYear,
+      filters.status,
+      page,
+      limit,
+      filters.search
     );
   }
 

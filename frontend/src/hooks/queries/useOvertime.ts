@@ -9,9 +9,9 @@ import {
   OvertimeRequestData,
   CreateOvertimeInput,
   ReviewOvertimeInput,
-  OvertimeListResponse,
   OvertimeStatus,
 } from "../../types/payroll.types";
+import { IPaginatedResponse } from "../../types/pagination.types";
 
 export const OVERTIME_KEYS = {
   all: ["overtime"] as const,
@@ -21,8 +21,8 @@ export const OVERTIME_KEYS = {
     ["overtime", "list", filters] as const,
 };
 
-export const useMyOvertimeQuery = (page: number = 1, limit: number = 20) => {
-  return useQuery<OvertimeListResponse, Error>({
+export const useMyOvertimeQuery = (page: number = 1, limit: number = 10) => {
+  return useQuery<IPaginatedResponse<OvertimeRequestData>, Error>({
     queryKey: OVERTIME_KEYS.my(page, limit),
     queryFn: () => getMyOvertimeAPI(page, limit),
     staleTime: 60 * 1000,
@@ -37,10 +37,11 @@ export const useAllOvertimeQuery = (
     userId?: string;
     page?: number;
     limit?: number;
+    search?: string;
   },
   enabled: boolean = true
 ) => {
-  return useQuery<OvertimeListResponse, Error>({
+  return useQuery<IPaginatedResponse<OvertimeRequestData>, Error>({
     queryKey: OVERTIME_KEYS.list(filters),
     queryFn: () => getAllOvertimeAPI(filters),
     enabled,

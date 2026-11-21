@@ -11,11 +11,15 @@ import {
   EmployeeSummary,
 } from "../../types/payroll.types";
 import { LogAdvanceModal } from "./LogAdvanceModal";
+import { Pagination } from "../common/Pagination";
+import { HighlightText } from "../common/HighlightText";
+import { useDebounce } from "../../hooks/useDebounce";
 import {
   PaymentsIcon,
   CheckCircleIcon,
   WarningIcon,
   AddIcon,
+  SearchIcon,
 } from "../icons";
 
 export const SalaryAdvanceTab: React.FC = () => {
@@ -25,17 +29,24 @@ export const SalaryAdvanceTab: React.FC = () => {
 
   const currentMonthYear = new Date().toISOString().slice(0, 7);
   const [selectedMonthYear, setSelectedMonthYear] = useState<string>(currentMonthYear);
+  const [advSearch, setAdvSearch] = useState<string>("");
+  const debouncedAdvSearch = useDebounce(advSearch, 350);
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
 
   // Queries
   const { data: allData, isLoading: isAllLoading } = useAdvancesQuery(
     {
       monthYear: selectedMonthYear || undefined,
+      search: debouncedAdvSearch || undefined,
+      page,
+      limit,
     },
     isPrivileged
   );
 
-  const { data: myData, isLoading: isMyLoading } = useMyAdvancesQuery(1, 50);
+  const { data: myData, isLoading: isMyLoading } = useMyAdvancesQuery(page, limit);
 
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -46,8 +57,9 @@ export const SalaryAdvanceTab: React.FC = () => {
   };
 
   const recordsToDisplay = isPrivileged
-    ? allData?.records || []
-    : myData?.records || [];
+    ? allData?.data || []
+    : myData?.data || [];
+  const pagination = isPrivileged ? allData?.pagination : myData?.pagination;
   const isLoading = isPrivileged ? isAllLoading : isMyLoading;
 
   const totalAdvanceAmount = recordsToDisplay.reduce((sum, r) => sum + r.amount, 0);
@@ -65,14 +77,33 @@ export const SalaryAdvanceTab: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {isPrivileged && (
+            <div className="relative w-full sm:w-56">
+              <SearchIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={advSearch}
+                onChange={(e) => {
+                  setAdvSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search advances..."
+                className="w-full pl-9 pr-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
+              />
+            </div>
+          )}
+
           {isPrivileged && (
             <div className="flex items-center gap-2">
               <label className="text-xs font-bold text-slate-700">Month:</label>
               <input
                 type="month"
                 value={selectedMonthYear}
-                onChange={(e) => setSelectedMonthYear(e.target.value)}
+                onChange={(e) => {
+                  setSelectedMonthYear(e.target.value);
+                  setPage(1);
+                }}
                 className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600/20"
               />
             </div>
@@ -159,7 +190,10 @@ export const SalaryAdvanceTab: React.FC = () => {
                     <tr key={adv._id} className="hover:bg-teal-50/20">
                       {isPrivileged && (
                         <td className="py-3 px-4 font-bold text-slate-800">
-                          {emp?.username || "Employee"}
+                          <HighlightText
+                            text={emp?.username || "Employee"}
+                            query={debouncedAdvSearch}
+                          />
                         </td>
                       )}
                       <td className="py-3 px-3 text-slate-600">
@@ -198,6 +232,18 @@ export const SalaryAdvanceTab: React.FC = () => {
             </table>
           </div>
         )}
+
+        <Pagination
+          currentPage={pagination?.currentPage || page}
+          pageSize={pagination?.pageSize || limit}
+          totalRecords={pagination?.totalRecords || 0}
+          totalPages={pagination?.totalPages || 1}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => {
+            setLimit(s);
+            setPage(1);
+          }}
+        />
       </div>
 
       {/* Log Advance Modal */}

@@ -37,4 +37,5 @@ export interface OvertimeFilters {
   userId?: string;
   page?: number;
   limit?: number;
+  search?: string;
 }

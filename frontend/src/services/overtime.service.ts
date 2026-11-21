@@ -3,9 +3,9 @@ import {
   OvertimeRequestData,
   CreateOvertimeInput,
   ReviewOvertimeInput,
-  OvertimeListResponse,
   OvertimeStatus,
 } from "../types/payroll.types";
+import { IPaginatedResponse } from "../types/pagination.types";
 
 export const submitOvertimeAPI = async (
   payload: CreateOvertimeInput
@@ -20,15 +20,15 @@ export const submitOvertimeAPI = async (
 
 export const getMyOvertimeAPI = async (
   page: number = 1,
-  limit: number = 20
-): Promise<OvertimeListResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: OvertimeListResponse;
-  }>("/api/overtime/my", {
-    params: { page, limit },
-  });
-  return response.data.data;
+  limit: number = 10
+): Promise<IPaginatedResponse<OvertimeRequestData>> => {
+  const response = await apiClient.get<IPaginatedResponse<OvertimeRequestData>>(
+    "/api/overtime/my",
+    {
+      params: { page, limit },
+    }
+  );
+  return response.data;
 };
 
 export const getAllOvertimeAPI = async (filters?: {
@@ -38,14 +38,15 @@ export const getAllOvertimeAPI = async (filters?: {
   userId?: string;
   page?: number;
   limit?: number;
-}): Promise<OvertimeListResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: OvertimeListResponse;
-  }>("/api/overtime/all", {
-    params: filters,
-  });
-  return response.data.data;
+  search?: string;
+}): Promise<IPaginatedResponse<OvertimeRequestData>> => {
+  const response = await apiClient.get<IPaginatedResponse<OvertimeRequestData>>(
+    "/api/overtime/all",
+    {
+      params: filters,
+    }
+  );
+  return response.data;
 };
 
 export const reviewOvertimeAPI = async (

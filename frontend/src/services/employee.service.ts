@@ -3,17 +3,30 @@ import {
   CreateEmployeeInput,
   UpdateEmployeeInput,
   Employee,
-  EmployeesResponse,
   CreateEmployeeResponse,
   UpdateEmployeeResponse,
 } from "../types/employee.types";
+import { IPaginatedResponse } from "../types/pagination.types";
 
 /**
- * Fetches the entire list of registered employees.
+ * Fetches the paginated list of registered employees.
  */
-export const getEmployees = async (): Promise<Employee[]> => {
-  const response = await apiClient.get<EmployeesResponse>("/api/employees");
-  return response.data.data.employees;
+export const getEmployees = async (
+  page: number = 1,
+  limit: number = 10,
+  search?: string,
+  department?: string,
+  role?: string
+): Promise<IPaginatedResponse<Employee>> => {
+  const params: Record<string, unknown> = { page, limit };
+  if (search && search.trim()) params.search = search.trim();
+  if (department && department !== "All Departments") params.department = department;
+  if (role && role !== "All Roles") params.role = role;
+
+  const response = await apiClient.get<IPaginatedResponse<Employee>>("/api/employees", {
+    params,
+  });
+  return response.data;
 };
 
 /**

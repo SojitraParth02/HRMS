@@ -2,8 +2,8 @@ import { apiClient } from "./apiClient";
 import {
   SalaryAdvanceData,
   CreateAdvanceInput,
-  AdvanceListResponse,
 } from "../types/payroll.types";
+import { IPaginatedResponse } from "../types/pagination.types";
 
 export const logAdvanceAPI = async (
   payload: CreateAdvanceInput
@@ -22,25 +22,26 @@ export const getAdvancesAPI = async (filters?: {
   userId?: string;
   page?: number;
   limit?: number;
-}): Promise<AdvanceListResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: AdvanceListResponse;
-  }>("/api/advances", {
-    params: filters,
-  });
-  return response.data.data;
+  search?: string;
+}): Promise<IPaginatedResponse<SalaryAdvanceData>> => {
+  const response = await apiClient.get<IPaginatedResponse<SalaryAdvanceData>>(
+    "/api/advances",
+    {
+      params: filters,
+    }
+  );
+  return response.data;
 };
 
 export const getMyAdvancesAPI = async (
   page: number = 1,
-  limit: number = 20
-): Promise<AdvanceListResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: AdvanceListResponse;
-  }>("/api/advances/my", {
-    params: { page, limit },
-  });
-  return response.data.data;
+  limit: number = 10
+): Promise<IPaginatedResponse<SalaryAdvanceData>> => {
+  const response = await apiClient.get<IPaginatedResponse<SalaryAdvanceData>>(
+    "/api/advances/my",
+    {
+      params: { page, limit },
+    }
+  );
+  return response.data;
 };

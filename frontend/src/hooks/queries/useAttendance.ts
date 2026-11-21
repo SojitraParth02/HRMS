@@ -13,7 +13,6 @@ import {
 } from "../../services/attendance.service";
 import {
   TodayAttendanceData,
-  AttendanceHistoryResponse,
   AttendanceRecord,
   AttendanceCorrectionRecord,
   CreateCorrectionInput,
@@ -22,15 +21,16 @@ import {
   BiometricImportResult,
   BiometricImportHistoryItem,
 } from "../../types/attendance.types";
+import { IPaginatedResponse } from "../../types/pagination.types";
 
 export const ATTENDANCE_KEYS = {
   today: ["attendance", "today"] as const,
   history: (page: number, limit: number, startDate?: string, endDate?: string) =>
     ["attendance", "history", { page, limit, startDate, endDate }] as const,
-  roster: (date?: string, department?: string) =>
-    ["attendance", "roster", { date, department }] as const,
-  corrections: (status?: CorrectionStatus) =>
-    ["attendance", "corrections", { status }] as const,
+  roster: (date?: string, department?: string, page: number = 1, limit: number = 10, search?: string) =>
+    ["attendance", "roster", { date, department, page, limit, search }] as const,
+  corrections: (status?: CorrectionStatus, page: number = 1, limit: number = 10) =>
+    ["attendance", "corrections", { status, page, limit }] as const,
 };
 
 export const useTodayAttendanceQuery = () => {
@@ -44,11 +44,11 @@ export const useTodayAttendanceQuery = () => {
 
 export const useMyAttendanceHistoryQuery = (
   page: number = 1,
-  limit: number = 20,
+  limit: number = 10,
   startDate?: string,
   endDate?: string
 ) => {
-  return useQuery<AttendanceHistoryResponse, Error>({
+  return useQuery<IPaginatedResponse<AttendanceRecord>, Error>({
     queryKey: ATTENDANCE_KEYS.history(page, limit, startDate, endDate),
     queryFn: () => getMyAttendanceHistory(page, limit, startDate, endDate),
     staleTime: 60 * 1000,
@@ -58,11 +58,14 @@ export const useMyAttendanceHistoryQuery = (
 export const useAllAttendanceRosterQuery = (
   date?: string,
   department?: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  page: number = 1,
+  limit: number = 10,
+  search?: string
 ) => {
-  return useQuery<AttendanceRecord[], Error>({
-    queryKey: ATTENDANCE_KEYS.roster(date, department),
-    queryFn: () => getAllAttendanceRoster(date, department),
+  return useQuery<IPaginatedResponse<AttendanceRecord>, Error>({
+    queryKey: ATTENDANCE_KEYS.roster(date, department, page, limit, search),
+    queryFn: () => getAllAttendanceRoster(date, department, page, limit, search),
     enabled,
     staleTime: 60 * 1000,
   });
@@ -100,11 +103,13 @@ export const useSubmitCorrectionMutation = () => {
 
 export const useCorrectionsQuery = (
   status?: CorrectionStatus,
-  enabled: boolean = true
+  enabled: boolean = true,
+  page: number = 1,
+  limit: number = 10
 ) => {
-  return useQuery<AttendanceCorrectionRecord[], Error>({
-    queryKey: ATTENDANCE_KEYS.corrections(status),
-    queryFn: () => getCorrections(status),
+  return useQuery<IPaginatedResponse<AttendanceCorrectionRecord>, Error>({
+    queryKey: ATTENDANCE_KEYS.corrections(status, page, limit),
+    queryFn: () => getCorrections(status, page, limit),
     enabled,
     staleTime: 30 * 1000,
   });

@@ -29,6 +29,8 @@ export const punchOut = async (): Promise<AttendanceRecord> => {
   return response.data.data.attendance;
 };
 
+import { IPaginatedResponse } from "../types/pagination.types";
+
 export const getTodayAttendance = async (): Promise<TodayAttendanceData> => {
   const response = await apiClient.get<{
     status: string;
@@ -39,30 +41,33 @@ export const getTodayAttendance = async (): Promise<TodayAttendanceData> => {
 
 export const getMyAttendanceHistory = async (
   page: number = 1,
-  limit: number = 20,
+  limit: number = 10,
   startDate?: string,
   endDate?: string
-): Promise<AttendanceHistoryResponse> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: AttendanceHistoryResponse;
-  }>("/api/attendance/my-history", {
-    params: { page, limit, startDate, endDate },
-  });
-  return response.data.data;
+): Promise<IPaginatedResponse<AttendanceRecord>> => {
+  const response = await apiClient.get<IPaginatedResponse<AttendanceRecord>>(
+    "/api/attendance/my-history",
+    {
+      params: { page, limit, startDate, endDate },
+    }
+  );
+  return response.data;
 };
 
 export const getAllAttendanceRoster = async (
   date?: string,
-  department?: string
-): Promise<AttendanceRecord[]> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: { roster: AttendanceRecord[] };
-  }>("/api/attendance/all", {
-    params: { date, department },
-  });
-  return response.data.data.roster;
+  department?: string,
+  page: number = 1,
+  limit: number = 10,
+  search?: string
+): Promise<IPaginatedResponse<AttendanceRecord>> => {
+  const response = await apiClient.get<IPaginatedResponse<AttendanceRecord>>(
+    "/api/attendance/all",
+    {
+      params: { date, department, page, limit, search },
+    }
+  );
+  return response.data;
 };
 
 export const submitCorrection = async (
@@ -105,15 +110,16 @@ export const getBiometricImportHistory = async (): Promise<
 };
 
 export const getCorrections = async (
-  status?: CorrectionStatus
-): Promise<AttendanceCorrectionRecord[]> => {
-  const response = await apiClient.get<{
-    status: string;
-    data: { corrections: AttendanceCorrectionRecord[] };
-  }>("/api/attendance/corrections", {
-    params: { status },
+  status?: CorrectionStatus,
+  page: number = 1,
+  limit: number = 10
+): Promise<IPaginatedResponse<AttendanceCorrectionRecord>> => {
+  const response = await apiClient.get<
+    IPaginatedResponse<AttendanceCorrectionRecord>
+  >("/api/attendance/corrections", {
+    params: { status, page, limit },
   });
-  return response.data.data.corrections;
+  return response.data;
 };
 
 export const reviewCorrection = async (

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useMyPayslipsQuery } from "../../hooks/queries/usePayroll";
 import { PayrollData } from "../../types/payroll.types";
 import { PayslipModal } from "./PayslipModal";
+import { Pagination } from "../common/Pagination";
 import {
   ReceiptLongIcon,
   CheckCircleIcon,
@@ -12,7 +13,9 @@ import {
 } from "../icons";
 
 export const EmployeePayslipsTab: React.FC = () => {
-  const { data, isLoading } = useMyPayslipsQuery(1, 50);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(10);
+  const { data, isLoading } = useMyPayslipsQuery(page, limit);
   const [selectedForPayslip, setSelectedForPayslip] = useState<PayrollData | null>(null);
 
   const formatCurrency = (val: number) => {
@@ -29,7 +32,8 @@ export const EmployeePayslipsTab: React.FC = () => {
     return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
   };
 
-  const records = data?.records || [];
+  const records = data?.data || [];
+  const pagination = data?.pagination;
 
   return (
     <div className="space-y-6">
@@ -125,6 +129,20 @@ export const EmployeePayslipsTab: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {records.length > 0 && (
+        <Pagination
+          currentPage={pagination?.currentPage || page}
+          pageSize={pagination?.pageSize || limit}
+          totalRecords={pagination?.totalRecords || 0}
+          totalPages={pagination?.totalPages || 1}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => {
+            setLimit(s);
+            setPage(1);
+          }}
+        />
       )}
 
       {/* Payslip Modal */}
