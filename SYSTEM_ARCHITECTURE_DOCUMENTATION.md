@@ -1550,4 +1550,66 @@ Secondary operational collections (`payrolls`, `attendances`, `leaves`, `overtim
 
 ---
 
-> **Notice to Developers**: When beginning new modules or updating existing endpoints, ensure server-side pagination and relational search patterns strictly conform to Sections 19 and 20.
+## 21. Live Executive Dashboard & High-Performance Aggregation Engine
+
+### 21.1 Architectural Overview & Zero-Redundancy Mandate
+The Executive Dashboard (`/dashboard`) operates on a 100% dynamic data pipeline, completely replacing all static mock values, hardcoded strings, and pre-baked SVG shapes. Adhering to the project's **Zero-Redundancy Principle**, no auxiliary `DashboardStats` or cached MongoDB collections are introduced. Instead, all metrics are aggregated on-the-fly across live transactional collections (`users`, `attendances`, `payrolls`, `overtime_requests`, `leaves`, `attendance_corrections`) via a single, consolidated HTTP GET endpoint.
+
+### 21.2 4-Tier Backend Aggregation Pipeline
+
+#### Unified Endpoint Contract
+- **Route**: `GET /api/dashboard/stats`
+- **Query Parameters**:
+  - `date`: Target roster date (format: `YYYY-MM-DD`, defaults to current UTC date)
+  - `monthYear`: Target financial cycle (format: `YYYY-MM`, defaults to current UTC month)
+- **Security**: Authenticated with `verifyToken` and `authorizeRoles("ADMIN", "HR", "EMPLOYEE")`. Scopes queries to the authenticated employee when called by `EMPLOYEE` users.
+
+#### Coordinated Parallel Aggregation (`backend/src/repositories/dashboard.repository.ts`)
+The repository executes a single `Promise.all` coordinating parallel queries:
+1. **Headcount KPIs**: `UserModel.countDocuments` active headcount and MoM trend vs. previous month.
+2. **Attendance Breakdown**: `AttendanceModel.aggregate` matching `{ date: { $gte: startOfDay, $lte: endOfDay } }` to produce `present`, `absent`, `late`, and `halfDay` counts alongside previous-day trends.
+3. **Current Cycle Payroll**: `PayrollModel.aggregate` matching `{ monthYear }` summing `$netSalary`, `$baseSalary`, deductions, and status split (`FINALIZED`/`PAID` vs `DRAFT`).
+4. **Historical 6-Month Payroll Trend**: Consecutive 6-month key generation `[M-5, M-4, M-3, M-2, M-1, M0]` with `$in` matching and chronological array normalization for SVG spline rendering.
+5. **Approved Overtime & Department Distribution**: `OvertimeRequestModel.aggregate` matching `{ date: { $gte: monthStart, $lte: monthEnd }, status: "APPROVED" }`, grouped by `$user.department`.
+6. **Managerial Action Queue Counters**: Immediate unreviewed counts from `LeaveModel` (`PENDING`), `AttendanceCorrectionModel` (`PENDING`), and `OvertimeRequestModel` (`PENDING`).
+
+### 21.3 Dynamic SVG Geometric Formulations
+
+#### 1. Circular Donut Charts (`AttendanceDonutChart.tsx`, `PayrollStatusCard.tsx`)
+- Normalized viewBox: `0 0 36 36` with radius $R = 15.9155$, giving a total circumference:
+  $$C = 2 \times \pi \times 15.9155 \approx 100$$
+- Percentage values $P \in [0, 100]$ map directly to stroke dash arrays without floating-point conversion:
+  $$\text{strokeDasharray} = `${P},\ 100`$$
+- Stacked segments apply cumulative negative offsets starting at 12 o'clock (rotated by $-90^\circ$):
+  $$\text{strokeDashoffset} = `${-\sum_{k=0}^{i-1} P_k}`$$
+
+#### 2. Dynamic 6-Month Cubic Bezier Wave Curve (`PayrollWaveCard.tsx`)
+- Standardized SVG Canvas: `viewBox="0 0 300 90"`.
+- Coordinates $X_i = i \times \frac{300}{N - 1}$ across 6 chronological data points.
+- Normalized $Y_i \in [18, 72]$ scaled against observed `min` and `max` amounts:
+  $$Y_i = 72 - \left(\frac{\text{amount}_i - \min}{\max - \min + \epsilon}\right) \times 54$$
+- Smooth Catmull-Rom cubic Bezier control points:
+  $$cp1 = \left(x_i + \frac{x_{i+1} - x_{i-1}}{6},\ y_i + \frac{y_{i+1} - y_{i-1}}{6}\right), \quad cp2 = \left(x_{i+1} - \frac{x_{i+2} - x_i}{6},\ y_{i+1} - \frac{y_{i+2} - y_i}{6}\right)$$
+- Path string: `M x0,y0 C cp1x,cp1y cp2x,cp2y x1,y1 ...` with closed fill `L 300,90 L 0,90 Z`.
+
+#### 3. Overtime Histogram Scaling (`OvertimeHistogramCard.tsx`)
+- Proportional height scaling:
+  $$\text{heightPct}_i = \min\left(100, \max\left(8, \text{round}\left(\frac{\text{hours}_i}{\max(\text{hours})} \times 100\right)\right)\right)$$
+
+### 21.4 Clean Component Architecture & Server/Client Boundaries
+
+- **`src/app/(dashboard)/dashboard/page.tsx`**: Clean Next.js 15 Server Component with static `Metadata` export.
+- **`src/components/dashboard/DashboardView.tsx`**: Client Component (`'use client'`) managing date and cycle states, executing TanStack Query (`useDashboardStatsQuery`), handling shimmer loading skeletons, and composing modular widget cards.
+- **`src/components/dashboard/widgets/`**:
+  - `DashboardFilterBar.tsx`: Reactive Date and Month pickers with instant TanStack Query cache invalidation and reset button.
+  - `ActionQueueBanner.tsx`: High-visibility managerial action cards linking directly to `/leaves`, `/attendance`, and `/payroll`.
+  - `KpiMetricsGrid.tsx`: Dynamic Headcount, Present, Absent, and Late KPI cards with positive/negative trend indicators (`TrendingUpIcon`, `TrendingDownIcon`).
+  - `AttendanceDonutChart.tsx`: Live SVG Donut chart with status breakdown.
+  - `PayrollWaveCard.tsx`: Dynamic 6-month historical wave spline.
+  - `OvertimeHistogramCard.tsx`: Department overtime distribution bars with interactive hover tooltips.
+  - `PayrollStatusCard.tsx`: Processed vs. Pending financial run progress donut.
+- **Centralized Iconography**: 100% of icons imported exclusively from `src/components/icons.tsx`.
+
+---
+
+> **Notice to Developers**: When extending dashboard capabilities, maintain the zero-redundancy live aggregation standard documented in Section 21.

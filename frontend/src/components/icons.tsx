@@ -41,6 +41,9 @@ import Edit from "@mui/icons-material/Edit";
 import EventAvailable from "@mui/icons-material/EventAvailable";
 import UploadFile from "@mui/icons-material/UploadFile";
 import Download from "@mui/icons-material/Download";
+import TrendingUp from "@mui/icons-material/TrendingUp";
+import TrendingDown from "@mui/icons-material/TrendingDown";
+import CurrencyRupee from "@mui/icons-material/CurrencyRupee";
 
 /**
  * Higher-Order Component (HOC) to scale all icons by 1.25em
@@ -116,3 +119,15 @@ export const WarningIcon: React.FC<SvgIconProps> = withCustomSize(WarningAmber);
 export const EditIcon: React.FC<SvgIconProps> = withCustomSize(Edit);
 export const UploadFileIcon: React.FC<SvgIconProps> = withCustomSize(UploadFile);
 export const DownloadIcon: React.FC<SvgIconProps> = withCustomSize(Download);
+
+// Trend & Currency Icons
+export const TrendingUpIcon: React.FC<SvgIconProps> = withCustomSize(TrendingUp);
+export const TrendingDownIcon: React.FC<SvgIconProps> = withCustomSize(TrendingDown);
+export const CurrencyRupeeIcon: React.FC<SvgIconProps> = withCustomSize(CurrencyRupee);
+
+// Canonical Aliases for Common Dashboard UI Conventions
+export const UsersIcon = GroupIcon;
+export const XCircleIcon = CancelIcon;
+export const ClockIcon = AccessTimeIcon;
+export const AlertTriangleIcon = WarningIcon;
+export const ArrowRightIcon = ArrowForwardIcon;
