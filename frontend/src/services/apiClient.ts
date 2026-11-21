@@ -7,7 +7,9 @@ import axios, {
 import { store } from "../store";
 import { logout } from "../store/slices/authSlice";
 
-const baseURL: string = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+const rawBaseURL: string = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+// Normalize baseURL to prevent duplicate `/api` prefix (all service endpoints already start with `/api`)
+const baseURL: string = rawBaseURL.replace(/\/api\/?$/, "");
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL,
