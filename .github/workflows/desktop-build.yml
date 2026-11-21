@@ -44,7 +44,7 @@ jobs:
 
       - name: Build Next.js Static Export & Compile Electron
         env:
-          NEXT_PUBLIC_API_URL: https://hrms-pany.onrender.com/api
+          NEXT_PUBLIC_API_URL: https://hrms-pany.onrender.com
           NEXT_PUBLIC_BACKEND_URL: https://hrms-pany.onrender.com
         run: npm run desktop:build
 
