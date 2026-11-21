@@ -139,6 +139,14 @@ export const Topbar: React.FC = () => {
   const { latestNotification } = useSocket();
   const [activeToast, setActiveToast] = useState<NotificationItem | null>(null);
 
+  // Desktop Electron Platform detection (for macOS traffic lights padding)
+  const [isMacElectron, setIsMacElectron] = useState<boolean>(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.electronAPI?.platform === "darwin") {
+      setIsMacElectron(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (latestNotification) {
       setActiveToast(latestNotification);
@@ -197,7 +205,11 @@ export const Topbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#f4faf9]/85 backdrop-blur-md px-4 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between border-b border-teal-100/50">
+    <header
+      className={`sticky top-0 z-30 bg-[#f4faf9]/85 backdrop-blur-md px-4 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between border-b border-teal-100/50 transition-all ${
+        isMacElectron ? "pl-20 sm:pl-20" : ""
+      }`}
+    >
       {/* Left Area: Mobile Hamburger & Search Input */}
       <div className="flex items-center gap-3 sm:gap-5 flex-1 max-w-xl">
         <button

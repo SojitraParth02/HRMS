@@ -1,0 +1,70 @@
+{
+  "appId": "com.hrms.enterprise.desktop",
+  "productName": "HRMS Desktop",
+  "copyright": "Copyright © 2026 HRMS Enterprise",
+  "directories": {
+    "output": "dist",
+    "buildResources": "build-resources"
+  },
+  "files": [
+    "dist-electron/**/*",
+    "out/**/*",
+    "package.json"
+  ],
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64", "universal"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64", "arm64", "universal"]
+      }
+    ],
+    "category": "public.app-category.business",
+    "icon": "build-resources/icon.icns",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false
+  },
+  "dmg": {
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ],
+    "window": {
+      "width": 540,
+      "height": 380
+    }
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "build-resources/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "HRMS Desktop",
+    "installerIcon": "build-resources/icon.ico",
+    "uninstallerIcon": "build-resources/icon.ico"
+  }
+}

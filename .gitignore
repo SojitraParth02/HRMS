@@ -15,10 +15,12 @@ node_modules/
 */.next/
 out/
 */out/
-build/
-*/build/
 dist/
 */dist/
+dist-electron/
+*/dist-electron/
+build/
+*/build/
 
 # Logs
 npm-debug.log*
