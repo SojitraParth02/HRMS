@@ -1,5 +1,9 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "path";
+import serve from "electron-serve";
+
+// Initialize static serving before app is ready
+const loadURL = serve({ directory: "out" });
 
 // 1. Single-Instance Lock Enforcement
 const gotTheLock = app.requestSingleInstanceLock();
@@ -72,8 +76,6 @@ async function createWindow(): Promise<void> {
     }
   } else {
     // Production static serving from Next.js exported 'out' directory
-    const { default: serve } = await import("electron-serve");
-    const loadURL = serve({ directory: path.join(__dirname, "../out") });
     await loadURL(mainWindow);
   }
 
