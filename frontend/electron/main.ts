@@ -11,12 +11,24 @@ let mainWindow: BrowserWindow | null = null;
 
 if (!gotTheLock) {
   app.quit();
+  process.exit(0);
 } else {
   app.on("second-instance", () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
     }
+  });
+
+  // 3. Application Lifecycle
+  app.whenReady().then(async () => {
+    await createWindow();
+
+    app.on("activate", async () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        await createWindow();
+      }
+    });
   });
 }
 
@@ -109,16 +121,6 @@ ipcMain.handle("is-maximized", () => {
   return mainWindow?.isMaximized() ?? false;
 });
 
-// 3. Application Lifecycle
-app.whenReady().then(async () => {
-  await createWindow();
-
-  app.on("activate", async () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      await createWindow();
-    }
-  });
-});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
