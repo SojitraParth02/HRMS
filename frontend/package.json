@@ -1,12 +1,22 @@
 {
   "name": "frontend",
   "version": "0.1.0",
+  "description": "Enterprise HRMS Cross-Platform Desktop Application",
+  "author": "HRMS Enterprise",
   "private": true,
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "compile:electron": "tsc -p tsconfig.electron.json",
+    "desktop:dev": "npm run compile:electron && concurrently -k -p \"[{name}]\" -n \"NEXT,ELECTRON\" -c \"cyan,magenta\" \"next dev\" \"wait-on http://localhost:3000 && node electron/run-electron.js\"",
+    "desktop:preview": "npm run compile:electron && cross-env ELECTRON_FORCE_PROD=true node electron/run-electron.js",
+    "desktop:build": "cross-env NEXT_EXPORT=true next build && npm run compile:electron",
+    "desktop:dist": "npm run desktop:build && electron-builder --config electron-builder.json",
+    "desktop:dist:win": "npm run desktop:build && electron-builder --win --config electron-builder.json",
+    "generate:icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -31,9 +41,15 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.7",
+    "cross-env": "^10.1.0",
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0",
+    "electron-serve": "^3.0.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.5.1"
   }
 }
