@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "Enterprise HRMS Cross-Platform Desktop Application",
   "author": "HRMS Enterprise",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SojitraParth02/HRMS.git"
+  },
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {

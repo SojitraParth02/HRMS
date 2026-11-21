@@ -2,6 +2,11 @@
   "appId": "com.hrms.enterprise.desktop",
   "productName": "HRMS Desktop",
   "copyright": "Copyright © 2026 HRMS Enterprise",
+  "publish": {
+    "provider": "github",
+    "owner": "SojitraParth02",
+    "repo": "HRMS"
+  },
   "directories": {
     "output": "dist",
     "buildResources": "build-resources"
