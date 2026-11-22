@@ -103,11 +103,12 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
     if (!initialEmployees) return employees;
     return initialEmployees.filter((emp: Employee) => {
       const query: string = debouncedSearch.toLowerCase().trim();
+      const canSeePhone = currentUserRole !== "EMPLOYEE" || emp.id === currentUserId;
       const matchesSearch: boolean =
         !query ||
         emp.username.toLowerCase().includes(query) ||
         emp.email.toLowerCase().includes(query) ||
-        emp.phone.toLowerCase().includes(query) ||
+        (canSeePhone && (emp.phone || "").toLowerCase().includes(query)) ||
         emp.designation.toLowerCase().includes(query) ||
         emp.department.toLowerCase().includes(query);
 
@@ -120,7 +121,7 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
 
       return matchesSearch && matchesDept && matchesRole;
     });
-  }, [initialEmployees, employees, debouncedSearch, selectedDepartment, selectedRole]);
+  }, [initialEmployees, employees, debouncedSearch, selectedDepartment, selectedRole, currentUserRole, currentUserId]);
 
   const getDaysRemaining = (deactivatedAt?: string | null): number => {
     if (!deactivatedAt) return 30;
@@ -425,12 +426,24 @@ export const EmployeesView: React.FC<EmployeesViewProps> = ({
 
                     {/* Phone */}
                     <td className="px-4 py-3.5 whitespace-nowrap text-slate-600 font-mono text-xs">
-                      <HighlightText text={emp.phone || "—"} query={debouncedSearch} />
+                      {currentUserRole === "EMPLOYEE" && emp.id !== currentUserId ? (
+                        <span className="text-slate-400 italic text-xs font-sans">
+                          Confidential
+                        </span>
+                      ) : (
+                        <HighlightText text={emp.phone || "—"} query={debouncedSearch} />
+                      )}
                     </td>
 
                     {/* Monthly Salary */}
                     <td className="px-4 py-3.5 whitespace-nowrap font-semibold text-slate-800">
-                      {formatSalary(emp.monthlySalary)}
+                      {currentUserRole === "EMPLOYEE" && emp.id !== currentUserId ? (
+                        <span className="text-slate-400 italic text-xs font-normal">
+                          Confidential
+                        </span>
+                      ) : (
+                        formatSalary(emp.monthlySalary)
+                      )}
                     </td>
 
                     {/* Status Badge */}

@@ -172,6 +172,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const todayRecord = todayData?.attendance;
   const isPunchedIn = Boolean(todayRecord?.punchIn);
   const isPunchedOut = Boolean(todayRecord?.punchOut);
+  const isSunday =
+    new Date().getDay() === 0 ||
+    todayData?.isWeekend === true ||
+    todayData?.dayType === "WEEKLY_OFF";
 
   const shiftStartDisplay = todayData?.settings?.shiftStartTime ?? "09:00";
   const shiftEndDisplay = todayData?.settings?.shiftEndTime ?? "18:00";
@@ -224,6 +228,20 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </span>
           ) : null}
         </div>
+      );
+    }
+    if (record.status === "WEEKLY_OFF") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+          Weekly Off
+        </span>
+      );
+    }
+    if (record.status === "ON_LEAVE") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+          On Leave
+        </span>
       );
     }
     if (record.status === "HALF_DAY") {
@@ -326,137 +344,167 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
       {/* 1. Primary Punch Action & Shift Compensation Card */}
       <div className="bg-white rounded-2xl p-6 border border-teal-50 shadow-sm relative overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          {/* Shift Timing Details */}
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 bg-teal-50 text-teal-800 border border-teal-200/60 rounded-lg text-xs font-bold uppercase tracking-wider">
-                Shift: {shiftStartDisplay} – {shiftEndDisplay}
-              </span>
-              <span className="text-xs font-semibold text-slate-500">
-                (Grace window until {graceCutoffDisplay})
-              </span>
+        {isSunday ? (
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 py-2">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200/70 flex items-center justify-center shrink-0 shadow-sm text-2xl select-none">
+                🏖️
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-amber-100/90 text-amber-900 border border-amber-300/70 rounded-lg text-xs font-bold uppercase tracking-wider">
+                    WEEKLY OFF
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    Sunday
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                  Weekend Relaxation Day
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 font-medium">
+                  Punch in and out are closed today for the weekly off. Enjoy your day off! Regular shift resumes on Monday at {shiftStartDisplay}.
+                </p>
+              </div>
             </div>
 
-            {/* Shift Real-Time Status Banner */}
-            {!isPunchedIn ? (
-              <p className="text-xs sm:text-sm text-slate-600 font-medium">
-                You haven&apos;t punched in yet today. Click the button to start
-                your work day.
-              </p>
-            ) : todayRecord?.isLate ? (
-              <div className="flex items-start gap-2 text-rose-700 bg-rose-50/80 border border-rose-200/80 p-3 rounded-xl max-w-xl">
-                <WarningIcon className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <span className="font-bold">
-                    Late Arrival at {formatTime12h(todayRecord.punchIn)}:
-                  </span>{" "}
-                  You are late by {formatLateDuration(todayRecord.lateMinutes)}
-                  {todayRecord.lateMinutes >= 60 ? ` (${todayRecord.lateMinutes} mins)` : ""}{" "}
-                  (grace cutoff was {graceCutoffDisplay}).
-                  {todayRecord.isCorrected && (
-                    <span className="ml-1 text-emerald-700 font-semibold">
-                      (Correction Approved)
-                    </span>
-                  )}
-                </div>
+            <div className="flex items-center gap-2.5 self-start lg:self-auto px-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-700">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Office Resumes Tomorrow ({shiftStartDisplay})</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            {/* Shift Timing Details */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2.5 py-1 bg-teal-50 text-teal-800 border border-teal-200/60 rounded-lg text-xs font-bold uppercase tracking-wider">
+                  Shift: {shiftStartDisplay} – {shiftEndDisplay}
+                </span>
+                <span className="text-xs font-semibold text-slate-500">
+                  (Grace window until {graceCutoffDisplay})
+                </span>
               </div>
-            ) : (
-              <div className="flex items-start gap-2 text-teal-800 bg-teal-50/70 border border-teal-200/80 p-3 rounded-xl max-w-xl">
-                <CheckCircleIcon className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
-                <div className="text-xs">
-                  <span className="font-bold">
-                    Punched in at {formatTime12h(todayRecord?.punchIn)}
-                  </span>{" "}
-                  {todayRecord?.flexMinutesOwed &&
-                  todayRecord.flexMinutesOwed > 0 ? (
-                    <span>
-                      • Grace flex owed: {todayRecord.flexMinutesOwed}m.{" "}
-                      <span className="font-bold text-teal-900">
-                        Target evening departure:{" "}
-                        {formatTime12h(todayRecord.expectedPunchOut)}
-                      </span>
-                    </span>
-                  ) : (
-                    <span>• On-time arrival. Regular departure at {shiftEndDisplay}.</span>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Completed Work Duration if Punched Out */}
-            {isPunchedOut && (
-              <div className="space-y-1">
-                <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
-                  <CheckCircleIcon className="w-4 h-4" />
-                  <span>
-                    Work day completed! Total duration:{" "}
-                    {formatDuration(todayRecord?.totalWorkingMinutes)} (Punched out
-                    at {formatTime12h(todayRecord?.punchOut)})
-                  </span>
+              {/* Shift Real-Time Status Banner */}
+              {!isPunchedIn ? (
+                <p className="text-xs sm:text-sm text-slate-600 font-medium">
+                  You haven&apos;t punched in yet today. Click the button to start
+                  your work day.
                 </p>
-                {todayRecord?.earlyLeavingMinutes && todayRecord.earlyLeavingMinutes > 0 ? (
-                  <p className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
-                    <WarningIcon className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              ) : todayRecord?.isLate ? (
+                <div className="flex items-start gap-2 text-rose-700 bg-rose-50/80 border border-rose-200/80 p-3 rounded-xl max-w-xl">
+                  <WarningIcon className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <span className="font-bold">
+                      Late Arrival at {formatTime12h(todayRecord.punchIn)}:
+                    </span>{" "}
+                    You are late by {formatLateDuration(todayRecord.lateMinutes)}
+                    {todayRecord.lateMinutes >= 60 ? ` (${todayRecord.lateMinutes} mins)` : ""}{" "}
+                    (grace cutoff was {graceCutoffDisplay}).
+                    {todayRecord.isCorrected && (
+                      <span className="ml-1 text-emerald-700 font-semibold">
+                        (Correction Approved)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 text-teal-800 bg-teal-50/70 border border-teal-200/80 p-3 rounded-xl max-w-xl">
+                  <CheckCircleIcon className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <span className="font-bold">
+                      Punched in at {formatTime12h(todayRecord?.punchIn)}
+                    </span>{" "}
+                    {todayRecord?.flexMinutesOwed &&
+                      todayRecord.flexMinutesOwed > 0 ? (
+                      <span>
+                        • Grace flex owed: {todayRecord.flexMinutesOwed}m.{" "}
+                        <span className="font-bold text-teal-900">
+                          Target evening departure:{" "}
+                          {formatTime12h(todayRecord.expectedPunchOut)}
+                        </span>
+                      </span>
+                    ) : (
+                      <span>• On-time arrival. Regular departure at {shiftEndDisplay}.</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Completed Work Duration if Punched Out */}
+              {isPunchedOut && (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-emerald-700 flex items-center gap-1.5">
+                    <CheckCircleIcon className="w-4 h-4" />
                     <span>
-                      Departed early by {formatLateDuration(todayRecord.earlyLeavingMinutes)}
-                      {todayRecord.earlyLeavingMinutes >= 60 ? ` (${todayRecord.earlyLeavingMinutes} mins)` : ""}{" "}
-                      (expected departure was {formatTime12h(todayRecord.expectedPunchOut)}).
+                      Work day completed! Total duration:{" "}
+                      {formatDuration(todayRecord?.totalWorkingMinutes)} (Punched out
+                      at {formatTime12h(todayRecord?.punchOut)})
                     </span>
                   </p>
-                ) : null}
-              </div>
-            )}
-          </div>
+                  {todayRecord?.earlyLeavingMinutes && todayRecord.earlyLeavingMinutes > 0 ? (
+                    <p className="text-xs font-semibold text-amber-700 flex items-center gap-1.5">
+                      <WarningIcon className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>
+                        Departed early by {formatLateDuration(todayRecord.earlyLeavingMinutes)}
+                        {todayRecord.earlyLeavingMinutes >= 60 ? ` (${todayRecord.earlyLeavingMinutes} mins)` : ""}{" "}
+                        (expected departure was {formatTime12h(todayRecord.expectedPunchOut)}).
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
+              )}
+            </div>
 
-          {/* Large Punch Button */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              disabled={
-                isTodayLoading ||
-                isPunchedOut ||
-                punchInMutation.isPending ||
-                punchOutMutation.isPending
-              }
-              onClick={handlePunchClick}
-              className={`px-8 py-3.5 rounded-2xl font-black text-sm tracking-wide shadow-md transition-all cursor-pointer flex items-center gap-3 select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-                !isPunchedIn
-                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
-                  : !isPunchedOut
-                  ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20 animate-pulse"
-                  : "bg-slate-200 text-slate-500 cursor-not-allowed shadow-none"
-              }`}
-            >
-              <AccessTimeIcon className="w-5 h-5" />
-              <span>
-                {punchInMutation.isPending
-                  ? "Recording Punch..."
-                  : punchOutMutation.isPending
-                  ? "Recording Departure..."
-                  : !isPunchedIn
-                  ? "PUNCH IN"
-                  : !isPunchedOut
-                  ? "PUNCH OUT"
-                  : "DAY COMPLETED"}
-              </span>
-            </button>
-
-            {/* Quick Missed Punch Request Button if Punched In */}
-            {isPunchedIn && todayRecord && (
+            {/* Large Punch Button */}
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  setSelectedRecordForCorrection(todayRecord);
-                  setIsCorrectionModalOpen(true);
-                }}
-                className="px-4 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-2xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                disabled={
+                  isTodayLoading ||
+                  isPunchedOut ||
+                  punchInMutation.isPending ||
+                  punchOutMutation.isPending
+                }
+                onClick={handlePunchClick}
+                className={`px-8 py-3.5 rounded-2xl font-black text-sm tracking-wide shadow-md transition-all cursor-pointer flex items-center gap-3 select-none active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${!isPunchedIn
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
+                  : !isPunchedOut
+                    ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20 animate-pulse"
+                    : "bg-slate-200 text-slate-500 cursor-not-allowed shadow-none"
+                  }`}
               >
-                Request Correction
+                <AccessTimeIcon className="w-5 h-5" />
+                <span>
+                  {punchInMutation.isPending
+                    ? "Recording Punch..."
+                    : punchOutMutation.isPending
+                      ? "Recording Departure..."
+                      : !isPunchedIn
+                        ? "PUNCH IN"
+                        : !isPunchedOut
+                          ? "PUNCH OUT"
+                          : "DAY COMPLETED"}
+                </span>
               </button>
-            )}
+
+              {/* Quick Missed Punch Request Button if Punched In */}
+              {isPunchedIn && todayRecord && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRecordForCorrection(todayRecord);
+                    setIsCorrectionModalOpen(true);
+                  }}
+                  className="px-4 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-2xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                >
+                  Request Correction
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 2. Navigation Tabs (My Attendance / Workforce Roster / Pending Corrections) */}
@@ -464,11 +512,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab("my")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
-            activeTab === "my"
-              ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
-              : "text-slate-600 hover:bg-slate-100"
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${activeTab === "my"
+            ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
+            : "text-slate-600 hover:bg-slate-100"
+            }`}
         >
           <PersonIcon className="w-4 h-4" />
           <span>My Attendance</span>
@@ -479,11 +526,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab("roster")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
-                activeTab === "roster"
-                  ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${activeTab === "roster"
+                ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
+                : "text-slate-600 hover:bg-slate-100"
+                }`}
             >
               <GroupIcon className="w-4 h-4" />
               <span>Workforce Roster</span>
@@ -492,11 +538,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <button
               type="button"
               onClick={() => setActiveTab("corrections")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${
-                activeTab === "corrections"
-                  ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer select-none ${activeTab === "corrections"
+                ? "bg-teal-700 text-white shadow-sm shadow-teal-700/20"
+                : "text-slate-600 hover:bg-slate-100"
+                }`}
             >
               <AccessTimeIcon className="w-4 h-4" />
               <span>Pending Corrections</span>

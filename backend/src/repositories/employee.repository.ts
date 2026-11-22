@@ -38,7 +38,9 @@ export class EmployeeRepository {
     limit: number = 10,
     search?: string,
     department?: string,
-    role?: string
+    role?: string,
+    requesterRole?: string,
+    requesterId?: string
   ): Promise<{ employees: IUserDocument[]; total: number }> {
     const skip = (page - 1) * limit;
     const query: Record<string, unknown> = {};
@@ -51,12 +53,20 @@ export class EmployeeRepository {
     }
     if (search && search.trim()) {
       const regex = new RegExp(search.trim(), "i");
-      query.$or = [
+      const orConditions: Record<string, unknown>[] = [
         { username: regex },
         { email: regex },
-        { phone: regex },
         { designation: regex },
       ];
+
+      // Only allow unrestricted phone search for ADMIN and HR; restrict EMPLOYEE to their own record
+      if (requesterRole === "ADMIN" || requesterRole === "HR" || !requesterRole) {
+        orConditions.push({ phone: regex });
+      } else if (requesterId) {
+        orConditions.push({ phone: regex, _id: requesterId });
+      }
+
+      query.$or = orConditions;
     }
 
     const [employees, total] = await Promise.all([

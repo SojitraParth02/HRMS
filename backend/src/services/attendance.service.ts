@@ -163,7 +163,12 @@ export class AttendanceService {
   }
 
   public async punchIn(userId: string): Promise<IAttendanceDocument> {
-    const today = this.normalizeToMidnight(new Date());
+    const now = new Date();
+    if (now.getDay() === 0) {
+      throw new BadRequestError("Today is Sunday (Weekly Off). Punch-in is disabled.");
+    }
+
+    const today = this.normalizeToMidnight(now);
     const existing = await this.attendanceRepo.findByUserAndDate(userId, today);
 
     if (existing && existing.punchIn) {
@@ -171,7 +176,6 @@ export class AttendanceService {
     }
 
     const settings = await this.settingsRepo.getSettings();
-    const now = new Date();
     const metrics = this.calculatePunchInMetrics(now, settings);
 
     if (existing) {
@@ -210,7 +214,12 @@ export class AttendanceService {
   }
 
   public async punchOut(userId: string): Promise<IAttendanceDocument> {
-    const today = this.normalizeToMidnight(new Date());
+    const now = new Date();
+    if (now.getDay() === 0) {
+      throw new BadRequestError("Today is Sunday (Weekly Off). Punch-out is disabled.");
+    }
+
+    const today = this.normalizeToMidnight(now);
     const existing = await this.attendanceRepo.findByUserAndDate(userId, today);
 
     if (!existing || !existing.punchIn) {
@@ -223,7 +232,6 @@ export class AttendanceService {
       throw new BadRequestError("You have already punched out for today.");
     }
 
-    const now = new Date();
     const metrics = this.calculatePunchOutMetrics(
       existing.punchIn,
       now,
@@ -250,14 +258,26 @@ export class AttendanceService {
 
   public async getTodayAttendance(
     userId: string
-  ): Promise<{ attendance: IAttendanceDocument | null; settings: ICompanySettings }> {
-    const today = this.normalizeToMidnight(new Date());
+  ): Promise<{
+    attendance: IAttendanceDocument | null;
+    settings: ICompanySettings;
+    isWeekend: boolean;
+    dayType: "WORK_DAY" | "WEEKLY_OFF";
+  }> {
+    const now = new Date();
+    const isSunday = now.getDay() === 0;
+    const today = this.normalizeToMidnight(now);
     const [attendance, settings] = await Promise.all([
       this.attendanceRepo.findByUserAndDate(userId, today),
       this.settingsRepo.getSettings(),
     ]);
 
-    return { attendance, settings };
+    return {
+      attendance,
+      settings,
+      isWeekend: isSunday,
+      dayType: isSunday ? "WEEKLY_OFF" : "WORK_DAY",
+    };
   }
 
   public async getMyHistory(
