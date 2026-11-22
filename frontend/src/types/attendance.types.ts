@@ -1,4 +1,4 @@
-export type AttendanceStatus = "PRESENT" | "HALF_DAY" | "ABSENT" | "ON_LEAVE";
+export type AttendanceStatus = "PRESENT" | "HALF_DAY" | "ABSENT" | "ON_LEAVE" | "WEEKLY_OFF";
 export type CorrectionStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface CompanySettings {
@@ -43,6 +43,8 @@ export interface AttendanceRecord {
 export interface TodayAttendanceData {
   attendance: AttendanceRecord | null;
   settings: CompanySettings;
+  isWeekend?: boolean;
+  dayType?: "WORK_DAY" | "WEEKLY_OFF";
 }
 
 export interface AttendanceCorrectionRecord {

@@ -1,11 +1,12 @@
 import { Schema, model, Document, Types } from "mongoose";
 
-export type AttendanceStatus = "PRESENT" | "HALF_DAY" | "ABSENT" | "ON_LEAVE";
+export type AttendanceStatus = "PRESENT" | "HALF_DAY" | "ABSENT" | "ON_LEAVE" | "WEEKLY_OFF";
 export const ATTENDANCE_STATUSES: AttendanceStatus[] = [
   "PRESENT",
   "HALF_DAY",
   "ABSENT",
   "ON_LEAVE",
+  "WEEKLY_OFF",
 ];
 
 export interface IAttendance {
