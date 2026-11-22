@@ -1,0 +1,562 @@
+{
+  "info": {
+    "_postman_id": "c6218d84-934d-4951-863a-2311894d01b1",
+    "name": "HRMS Enterprise API Collection",
+    "description": "Complete Postman API test collection for HRMS Enterprise Workforce Management System, including Authentication, Employee Management, Attendance & Biometrics, Leaves, Overtime, Payroll, and Reports.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login (Admin / HR / Employee)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "    pm.collectionVariables.set('authToken', res.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@hrms.com\",\n  \"password\": \"HRMs@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Validate Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "validate"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Employee Management",
+      "item": [
+        {
+          "name": "Get Employees (Paginated & Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees?page=1&limit=10&department=Engineering",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "department", "value": "Engineering" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Employee (ADMIN / HR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"John Doe\",\n  \"email\": \"john.doe@hrms.com\",\n  \"password\": \"HRMs@123\",\n  \"role\": \"EMPLOYEE\",\n  \"phone\": \"+919876543299\",\n  \"department\": \"Engineering\",\n  \"designation\": \"Software Engineer\",\n  \"monthlySalary\": 60000,\n  \"joiningDate\": \"2026-11-25\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"]
+            }
+          }
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"designation\": \"Senior Software Engineer\",\n  \"monthlySalary\": 70000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", ":id"],
+              "variable": [{ "key": "id", "value": "EMPLOYEE_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Deactivate Employee (Soft Delete)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/:id/deactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", ":id", "deactivate"],
+              "variable": [{ "key": "id", "value": "EMPLOYEE_ID_HERE" }]
+            }
+          }
+        },
+        {
+          "name": "Reactivate Employee",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/:id/reactivate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", ":id", "reactivate"],
+              "variable": [{ "key": "id", "value": "EMPLOYEE_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Attendance & Biometrics",
+      "item": [
+        {
+          "name": "Punch In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/punch-in",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "punch-in"]
+            }
+          }
+        },
+        {
+          "name": "Punch Out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/punch-out",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "punch-out"]
+            }
+          }
+        },
+        {
+          "name": "Get Today's Attendance Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "status"]
+            }
+          }
+        },
+        {
+          "name": "Request Attendance Correction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"attendanceId\": \"ATTENDANCE_ID_HERE\",\n  \"date\": \"2026-11-20T00:00:00.000Z\",\n  \"requestedPunchIn\": \"2026-11-20T09:00:00.000Z\",\n  \"requestedPunchOut\": \"2026-11-20T18:00:00.000Z\",\n  \"reason\": \"Biometric device was not reading my fingerprint properly.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/corrections",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "corrections"]
+            }
+          }
+        },
+        {
+          "name": "Review Attendance Correction (HR / Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/corrections/:id/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "corrections", ":id", "review"],
+              "variable": [{ "key": "id", "value": "CORRECTION_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Leaves",
+      "item": [
+        {
+          "name": "Apply for Leave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2026-11-25T00:00:00.000Z\",\n  \"endDate\": \"2026-11-26T00:00:00.000Z\",\n  \"leaveType\": \"FULL_DAY\",\n  \"reason\": \"Family function attendance\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/leaves",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leaves"]
+            }
+          }
+        },
+        {
+          "name": "Get My Leave Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/leaves/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leaves", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Review Leave Application (HR / Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/leaves/:id/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "leaves", ":id", "review"],
+              "variable": [{ "key": "id", "value": "LEAVE_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Overtime",
+      "item": [
+        {
+          "name": "Request Overtime",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-11-20T00:00:00.000Z\",\n  \"startTime\": \"18:00\",\n  \"endTime\": \"19:00\",\n  \"taskDescription\": \"Deployed emergency production hotfix\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/overtime/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "overtime", "request"]
+            }
+          }
+        },
+        {
+          "name": "Review Overtime Request (HR / Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/overtime/:id/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "overtime", ":id", "review"],
+              "variable": [{ "key": "id", "value": "OVERTIME_ID_HERE" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Payroll & Advances",
+      "item": [
+        {
+          "name": "Run Payroll Draft (HR / Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthYear\": \"2026-11\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payroll/run",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payroll", "run"]
+            }
+          }
+        },
+        {
+          "name": "Finalize Payroll Month (HR / Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monthYear\": \"2026-11\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payroll/finalize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payroll", "finalize"]
+            }
+          }
+        },
+        {
+          "name": "Get My Payslips (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payroll/my-payslips",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payroll", "my-payslips"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Reports & Analytics",
+      "item": [
+        {
+          "name": "Attendance Report (CSV / JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/attendance?startDate=2026-11-01&endDate=2026-11-30",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "attendance"],
+              "query": [
+                { "key": "startDate", "value": "2026-11-01" },
+                { "key": "endDate", "value": "2026-11-30" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Payroll Expenditure Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reports/payroll?monthYear=2026-11",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reports", "payroll"],
+              "query": [{ "key": "monthYear", "value": "2026-11" }]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

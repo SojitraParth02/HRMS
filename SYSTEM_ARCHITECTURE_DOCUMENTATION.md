@@ -199,13 +199,32 @@ flowchart LR
 
 ---
 
-## 5. Data Architecture & Active Database Schema
+## 5. Complete Data Architecture & Database Schema
 
-### 5.1 Active Entity Model (`users` Collection)
-Currently, the primary multi-role user and employee entity model is declared and active in the database:
+### 5.1 Comprehensive Entity-Relationship Diagram (ERD)
+
+The diagram below reflects the normalized MongoDB multi-collection architecture across all 10 domain entities in the enterprise HRMS:
 
 ```mermaid
 erDiagram
+    USERS ||--o{ USERS : "createdBy"
+    USERS ||--o{ ATTENDANCE : "logs attendance (userId)"
+    USERS ||--o{ ATTENDANCE_CORRECTION : "submits request (userId)"
+    USERS ||--o{ ATTENDANCE_CORRECTION : "reviews request (reviewedBy)"
+    ATTENDANCE ||--o| ATTENDANCE_CORRECTION : "linked via correctionRequestId"
+    USERS ||--o{ LEAVE : "submits application (userId)"
+    USERS ||--o{ LEAVE : "reviews application (reviewedBy)"
+    USERS ||--o{ OVERTIME_REQUEST : "submits overtime (userId)"
+    USERS ||--o{ OVERTIME_REQUEST : "reviews overtime (reviewedBy)"
+    USERS ||--o{ PAYROLL : "receives compensation (userId)"
+    USERS ||--o{ PAYROLL : "generatedBy / finalizedBy / paidBy"
+    USERS ||--o{ SALARY_ADVANCE : "receives advance (userId)"
+    USERS ||--o{ SALARY_ADVANCE : "approved & disbursed by (givenBy)"
+    PAYROLL ||--o{ SALARY_ADVANCE : "deducted in (payrollId)"
+    USERS ||--o{ NOTIFICATION : "recipientId"
+    USERS ||--o{ BIOMETRIC_IMPORT : "uploadedBy"
+    USERS ||--o{ COMPANY_SETTINGS : "updatedBy"
+
     USERS {
         ObjectId _id PK
         string username
@@ -220,34 +239,430 @@ erDiagram
         ObjectId createdBy FK "Refers to USERS"
         string sessionId
         date joiningDate
+        date deactivatedAt "Indexed for 30d TTL cleanup"
+        date createdAt
+        date updatedAt
+    }
+
+    ATTENDANCE {
+        ObjectId _id PK
+        ObjectId userId FK "Refers to USERS"
+        date date "Normalized midnight (Indexed with userId)"
+        date punchIn "Timestamp or null"
+        date punchOut "Timestamp or null"
+        string status "PRESENT | HALF_DAY | ABSENT | ON_LEAVE | WEEKLY_OFF"
+        boolean isLate
+        number lateMinutes "Minutes past graceWindowEndTime"
+        number flexMinutesOwed "Grace period offset to be served"
+        date expectedPunchOut "Calculated shiftEnd + flex"
+        boolean isCompensated "True if flex owed served"
+        number earlyLeavingMinutes
+        number totalWorkingMinutes "Gross minus lunch hour"
+        boolean isCorrected
+        ObjectId correctionRequestId FK "Refers to ATTENDANCE_CORRECTION"
+        date createdAt
+        date updatedAt
+    }
+
+    ATTENDANCE_CORRECTION {
+        ObjectId _id PK
+        ObjectId attendanceId FK "Refers to ATTENDANCE"
+        ObjectId userId FK "Refers to USERS"
+        date date
+        date originalPunchIn
+        date requestedPunchIn
+        date originalPunchOut
+        date requestedPunchOut
+        string reason
+        string status "PENDING | APPROVED | REJECTED"
+        ObjectId reviewedBy FK "Refers to USERS"
+        date reviewedAt
+        string rejectionReason
+        date createdAt
+        date updatedAt
+    }
+
+    LEAVE {
+        ObjectId _id PK
+        ObjectId userId FK "Refers to USERS"
+        date startDate "Calendar date (Indexed)"
+        date endDate "Calendar date (Indexed)"
+        string leaveType "FULL_DAY | HALF_DAY"
+        number numberOfDays
+        string reason
+        string status "PENDING | APPROVED | REJECTED"
+        boolean isPaid
+        number paidDaysCount
+        number lossOfPayDaysCount
+        ObjectId reviewedBy FK "Refers to USERS"
+        date reviewedAt
+        string rejectionReason
+        date createdAt
+        date updatedAt
+    }
+
+    OVERTIME_REQUEST {
+        ObjectId _id PK
+        ObjectId userId FK "Refers to USERS"
+        date date "Calendar date (Indexed with userId, status)"
+        string startTime "HH:mm 24-hour"
+        string endTime "HH:mm 24-hour"
+        number hours
+        string taskDescription
+        string status "PENDING | APPROVED | REJECTED"
+        ObjectId reviewedBy FK "Refers to USERS"
+        date reviewedAt
+        string rejectionReason
+        string payrollCycle "YYYY-MM"
+        date createdAt
+        date updatedAt
+    }
+
+    PAYROLL {
+        ObjectId _id PK
+        ObjectId userId FK "Refers to USERS"
+        string monthYear "YYYY-MM (e.g. 2026-11)"
+        string status "DRAFT | FINALIZED"
+        number baseSalary "Frozen snapshot"
+        number perDayRate "baseSalary / 26"
+        number hourlyRate "perDayRate / 8"
+        number workingDaysStandard "Default 26"
+        number lopDaysCount
+        number lopDeduction "lopDays * perDayRate"
+        number overtimeHours
+        number overtimeHourlyRate "hourlyRate * 1.5"
+        number overtimePay "overtimeHours * overtimeHourlyRate"
+        number advanceDeduction "Sum of active month advances"
+        number bonus
+        number otherDeductions
+        number netSalary "Gross minus deductions"
+        boolean isPaid
+        date paidAt
+        string paymentMethod "BANK_TRANSFER | UPI | CHEQUE | CASH"
+        string transactionReference
+        ObjectId paidBy FK "Refers to USERS"
+        ObjectId generatedBy FK "Refers to USERS"
+        ObjectId finalizedBy FK "Refers to USERS"
+        date finalizedAt
+        string notes
+        date createdAt
+        date updatedAt
+    }
+
+    SALARY_ADVANCE {
+        ObjectId _id PK
+        ObjectId userId FK "Refers to USERS"
+        date date
+        number amount
+        string reason
+        ObjectId givenBy FK "Refers to USERS"
+        string monthYear "YYYY-MM for payroll deduction"
+        boolean isDeducted
+        ObjectId payrollId FK "Refers to PAYROLL"
+        date createdAt
+        date updatedAt
+    }
+
+    COMPANY_SETTINGS {
+        ObjectId _id PK
+        string shiftStartTime "Default 09:00"
+        string shiftEndTime "Default 18:00"
+        string graceWindowEndTime "Default 09:30"
+        number standardWorkHoursPerDay "Default 8"
+        string lunchStartTime "Default 12:00"
+        string lunchEndTime "Default 13:00"
+        number yearlyPaidLeaveQuota "Default 18"
+        ObjectId updatedBy FK "Refers to USERS"
+        date createdAt
+        date updatedAt
+    }
+
+    NOTIFICATION {
+        ObjectId _id PK
+        ObjectId recipientId FK "Refers to USERS (null for broadcast)"
+        string targetRole "HR | ADMIN | null"
+        string type "LEAVE_APPLIED | LEAVE_APPROVED | OVERTIME_REQUESTED | etc."
+        string title
+        string message
+        string link
+        boolean isRead
+        object metadata
+        date createdAt
+        date updatedAt
+    }
+
+    BIOMETRIC_IMPORT {
+        ObjectId _id PK
+        string fileName
+        ObjectId uploadedBy FK "Refers to USERS"
+        number totalRows
+        number successfulRows
+        number failedRows
+        array errorLog
+        date uploadedAt
         date createdAt
         date updatedAt
     }
 ```
 
-### 5.2 Data Dictionary: `users` Collection
-Defined in [backend/src/models/user.model.ts](file:///d:/HRMS/backend/src/models/user.model.ts):
+---
 
-| Field Name | Type | Nullable | Constraints & Indexing | Business Purpose |
+### 5.2 Comprehensive Data Dictionaries (All 10 Collections)
+
+#### 5.2.1 Collection: `users`
+*Defined in `backend/src/models/user.model.ts` | Target collection: `users`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
 | :--- | :--- | :---: | :--- | :--- |
-| `_id` | `ObjectId` | No | Auto-generated BSON primary key | Unique entity identifier |
+| `_id` | `ObjectId` | No | Auto-generated BSON primary key | Unique user identifier |
 | `username` | `String` | No | `required: true, trim: true` | Full name / display username (2-50 chars) |
 | `email` | `String` | No | `required: true, unique: true, lowercase: true, trim: true` | Unique login email address |
-| `password` | `String` | No | `required: true` (Bcrypt hash) | Hashed credential secret (min 8 chars, mixed case, number, symbol) |
-| `role` | `String` | No | `enum: ["ADMIN", "HR", "EMPLOYEE"], default: "EMPLOYEE"` | Role-based access control level |
-| `phone` | `String` | No | `default: "", trim: true` | ITU-T E.164 international contact phone |
-| `department` | `String` | No | `default: "Administration", trim: true` | Departmental organizational unit |
-| `designation` | `String` | No | `default: "Employee", trim: true` | Official position / job title |
-| `monthlySalary` | `Number` | No | `default: 0, min: 0` | Base monthly compensation |
-| `status` | `String` | No | `enum: ["ACTIVE", "INACTIVE"], default: "ACTIVE"` | Account status flag |
-| `createdBy` | `ObjectId` | Yes | `ref: "User", default: null` | Audit tracking reference to creator user |
-| `sessionId` | `String` | Yes | `default: null` | Current active single-session UUID token |
-| `joiningDate` | `Date` | No | `default: Date.now` | Official company employment start date |
-| `deactivatedAt` | `Date` | Yes | `default: null, index: true` | Timestamp when marked INACTIVE (triggers 30d countdown) |
+| `password` | `String` | No | `required: true` (Bcrypt 10 rounds) | Salted & hashed credential secret |
+| `role` | `String` | No | `enum: ["ADMIN", "HR", "EMPLOYEE"], default: "EMPLOYEE"` | Role-based authority access level |
+| `phone` | `String` | No | `default: "", trim: true` | ITU-T E.164 phone. Hidden from other employees |
+| `department` | `String` | No | `default: "Administration", trim: true` | Functional department assignment |
+| `designation` | `String` | No | `default: "Employee", trim: true` | Position / title |
+| `monthlySalary` | `Number` | No | `default: 0, min: 0` | Base monthly pay. Hidden from other employees |
+| `status` | `String` | No | `enum: ["ACTIVE", "INACTIVE"], default: "ACTIVE"` | Active / deactivated lifecycle flag |
+| `createdBy` | `ObjectId` | Yes | `ref: "User", default: null` | Audit reference to provisioning admin/HR |
+| `sessionId` | `String` | Yes | `default: null` | Active single-session UUID token |
+| `joiningDate` | `Date` | No | `default: Date.now` | Official employment commencement date |
+| `deactivatedAt` | `Date` | Yes | `default: null, index: true` | Soft-deletion timestamp (purged after 30d by cron) |
 | `createdAt` | `Date` | No | Managed via `timestamps: true` | Audit record creation timestamp |
-| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Audit last modification timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Audit last update timestamp |
 
-### 5.3 Core Validation Schemas & Regular Expressions
+---
+
+#### 5.2.2 Collection: `attendances`
+*Defined in `backend/src/models/attendance.model.ts` | Target collection: `attendances`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique attendance record identifier |
+| `userId` | `ObjectId` | No | `ref: "User", required: true, index: true` | Reference to employee |
+| `date` | `Date` | No | `required: true, index: true` | Normalized midnight calendar date |
+| `punchIn` | `Date` | Yes | `default: null` | Timestamp of first check-in of the day |
+| `punchOut` | `Date` | Yes | `default: null` | Timestamp of final check-out of the day |
+| `status` | `String` | No | `enum: ["PRESENT", "HALF_DAY", "ABSENT", "ON_LEAVE", "WEEKLY_OFF"], default: "PRESENT"` | Daily attendance status |
+| `isLate` | `Boolean` | No | `default: false` | True if punch-in exceeds grace window (09:30) |
+| `lateMinutes` | `Number` | No | `default: 0, min: 0` | Minutes arrived after grace window cutoff |
+| `flexMinutesOwed` | `Number` | No | `default: 0, min: 0` | Grace window flex minutes owed at shift end |
+| `expectedPunchOut`| `Date` | Yes | `default: null` | Shift end (18:00) + flexMinutesOwed |
+| `isCompensated` | `Boolean` | No | `default: false` | True if employee stayed until expectedPunchOut |
+| `earlyLeavingMinutes` | `Number`| No | `default: 0, min: 0` | Minutes departed before expected punch out |
+| `totalWorkingMinutes` | `Number`| No | `default: 0, min: 0` | Gross duration minus lunch (60 min if gross $\ge$ 300 min) |
+| `isCorrected` | `Boolean` | No | `default: false` | True if modified via approved correction |
+| `correctionRequestId` | `ObjectId`| Yes | `ref: "AttendanceCorrection", default: null` | Linked correction record |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Record creation timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Last modification timestamp |
+
+*Unique Index Constraint*: `{ userId: 1, date: 1 }` strictly prevents duplicate attendance records for the same employee on the same calendar date.
+
+---
+
+#### 5.2.3 Collection: `attendance_corrections`
+*Defined in `backend/src/models/attendanceCorrection.model.ts` | Target collection: `attendance_corrections`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique correction request identifier |
+| `attendanceId` | `ObjectId` | No | `ref: "Attendance", required: true, index: true` | Reference to target attendance record |
+| `userId` | `ObjectId` | No | `ref: "User", required: true, index: true` | Employee requesting correction |
+| `date` | `Date` | No | `required: true` | Calendar date of attendance |
+| `originalPunchIn` | `Date` | No | `required: true` | Initial uncorrected check-in timestamp |
+| `requestedPunchIn`| `Date` | No | `required: true` | Proposed corrected check-in timestamp |
+| `originalPunchOut`| `Date` | Yes | `default: null` | Initial uncorrected check-out timestamp |
+| `requestedPunchOut`| `Date` | Yes | `default: null` | Proposed corrected check-out timestamp |
+| `reason` | `String` | No | `required: true, trim: true` | Justification submitted by employee |
+| `status` | `String` | No | `enum: ["PENDING", "APPROVED", "REJECTED"], default: "PENDING", index: true` | Approval state |
+| `reviewedBy` | `ObjectId` | Yes | `ref: "User", default: null` | HR or Admin who reviewed request |
+| `reviewedAt` | `Date` | Yes | `default: null` | Review decision timestamp |
+| `rejectionReason`| `String` | Yes | `default: null, trim: true` | Feedback if rejected |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Submission timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Decision update timestamp |
+
+---
+
+#### 5.2.4 Collection: `leaves`
+*Defined in `backend/src/models/leave.model.ts` | Target collection: `leaves`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique leave application identifier |
+| `userId` | `ObjectId` | No | `ref: "User", required: true, index: true` | Applying employee |
+| `startDate` | `Date` | No | `required: true, index: true` | First day of leave |
+| `endDate` | `Date` | No | `required: true, index: true` | Last day of leave |
+| `leaveType` | `String` | No | `enum: ["FULL_DAY", "HALF_DAY"], default: "FULL_DAY"` | Duration mode |
+| `numberOfDays` | `Number` | No | `required: true, min: 0.5` | Total business days requested |
+| `reason` | `String` | No | `required: true, trim: true` | Employee justification |
+| `status` | `String` | No | `enum: ["PENDING", "APPROVED", "REJECTED"], default: "PENDING", index: true` | Workflow state |
+| `isPaid` | `Boolean` | No | `default: true` | Covered under annual paid leave quota |
+| `paidDaysCount` | `Number` | No | `default: 0, min: 0` | Days deducted from annual paid quota |
+| `lossOfPayDaysCount` | `Number` | No | `default: 0, min: 0` | Days marked unpaid (triggers payroll LOP) |
+| `reviewedBy` | `ObjectId` | Yes | `ref: "User", default: null` | Reviewing HR/Admin |
+| `reviewedAt` | `Date` | Yes | `default: null` | Decision timestamp |
+| `rejectionReason`| `String` | Yes | `default: null, trim: true` | Reason if denied |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Application timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Review timestamp |
+
+---
+
+#### 5.2.5 Collection: `overtime_requests`
+*Defined in `backend/src/models/overtime.model.ts` | Target collection: `overtime_requests`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique overtime request identifier |
+| `userId` | `ObjectId` | No | `ref: "User", required: true, index: true` | Submitting employee |
+| `date` | `Date` | No | `required: true, index: true` | Calendar date overtime was worked |
+| `startTime` | `String` | No | `required: true, trim: true` | Overtime start time (HH:mm format) |
+| `endTime` | `String` | No | `required: true, trim: true` | Overtime end time (HH:mm format) |
+| `hours` | `Number` | No | `required: true, min: 0.1` | Duration worked beyond standard shift |
+| `taskDescription`| `String` | No | `required: true, trim: true` | Deliverables accomplished during OT |
+| `status` | `String` | No | `enum: ["PENDING", "APPROVED", "REJECTED"], default: "PENDING"` | Review state |
+| `reviewedBy` | `ObjectId` | Yes | `ref: "User", default: null` | Approving HR/Admin |
+| `reviewedAt` | `Date` | Yes | `default: null` | Review timestamp |
+| `rejectionReason`| `String` | Yes | `default: null, trim: true` | Feedback if rejected |
+| `payrollCycle` | `String` | Yes | `default: null, trim: true` | Linked cycle (e.g. "2026-11") |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Submission timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Update timestamp |
+
+*Compound Index*: `{ userId: 1, date: 1, status: 1 }` accelerates employee overtime history and payroll aggregation queries.
+
+---
+
+#### 5.2.6 Collection: `payrolls`
+*Defined in `backend/src/models/payroll.model.ts` | Target collection: `payrolls`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique payroll slip identifier |
+| `userId` | `ObjectId` | No | `ref: "User", required: true, index: true` | Compensated employee |
+| `monthYear` | `String` | No | `required: true, trim: true` | Target billing cycle (e.g. "2026-11") |
+| `status` | `String` | No | `enum: ["DRAFT", "FINALIZED"], default: "DRAFT"` | Draft vs Locked/Published state |
+| `baseSalary` | `Number` | No | `required: true, min: 0` | Frozen base salary at time of run |
+| `perDayRate` | `Number` | No | `required: true, min: 0` | Statutory daily rate: `baseSalary / 26` |
+| `hourlyRate` | `Number` | No | `required: true, min: 0` | Hourly rate: `perDayRate / 8` |
+| `workingDaysStandard` | `Number` | No | `default: 26, required: true` | Statutory denominator (26 days) |
+| `lopDaysCount` | `Number` | No | `default: 0, min: 0` | Unpaid / loss-of-pay days in month |
+| `lopDeduction` | `Number` | No | `default: 0, min: 0` | `lopDaysCount * perDayRate` |
+| `overtimeHours` | `Number` | No | `default: 0, min: 0` | Total approved OT hours in cycle |
+| `overtimeHourlyRate` | `Number` | No | `default: 0, min: 0` | Premium rate: `hourlyRate * 1.5` |
+| `overtimePay` | `Number` | No | `default: 0, min: 0` | `overtimeHours * overtimeHourlyRate` |
+| `advanceDeduction` | `Number` | No | `default: 0, min: 0` | Outstanding salary advances deducted |
+| `bonus` | `Number` | No | `default: 0, min: 0` | Discretionary performance bonus |
+| `otherDeductions` | `Number` | No | `default: 0, min: 0` | Tax, insurance, or misc deductions |
+| `netSalary` | `Number` | No | `required: true` | `(baseSalary + overtimePay + bonus) - (lop + advance + other)` |
+| `isPaid` | `Boolean` | No | `default: false` | Disbursement status |
+| `paidAt` | `Date` | Yes | `default: null` | Disbursement timestamp |
+| `paymentMethod` | `String` | Yes | `enum: ["BANK_TRANSFER", "UPI", "CHEQUE", "CASH"], default: null` | Disbursement channel |
+| `transactionReference`| `String` | Yes | `default: null` | Bank UTR / Cheque / Txn reference |
+| `paidBy` | `ObjectId` | Yes | `ref: "User", default: null` | HR/Admin who marked as paid |
+| `generatedBy` | `ObjectId` | No | `ref: "User", required: true` | User who initiated payroll generation |
+| `finalizedBy` | `ObjectId` | Yes | `ref: "User", default: null` | User who locked and finalized payroll |
+| `finalizedAt` | `Date` | Yes | `default: null` | Locking timestamp |
+| `notes` | `String` | Yes | `trim: true` | Internal accounting notes |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Creation timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Last modification timestamp |
+
+---
+
+#### 5.2.7 Collection: `salary_advances`
+*Defined in `backend/src/models/salaryAdvance.model.ts` | Target collection: `salary_advances`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique advance identifier |
+| `userId` | `ObjectId` | No | `ref: "User", required: true, index: true` | Recipient employee |
+| `date` | `Date` | No | `default: Date.now, required: true` | Date advance was issued |
+| `amount` | `Number` | No | `required: true, min: 1` | Advance monetary amount in INR |
+| `reason` | `String` | No | `required: true, trim: true` | Emergency / request justification |
+| `givenBy` | `ObjectId` | No | `ref: "User", required: true` | Admin/HR who approved disbursement |
+| `monthYear` | `String` | No | `required: true, trim: true` | Scheduled recovery month (YYYY-MM) |
+| `isDeducted` | `Boolean` | No | `default: false` | True once recovered in finalized payroll |
+| `payrollId` | `ObjectId` | Yes | `ref: "Payroll", default: null` | Linked payroll record where deducted |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Entry timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Deduction update timestamp |
+
+*Compound Index*: `{ userId: 1, monthYear: 1, isDeducted: 1 }` enables instantaneous aggregation of outstanding advance liabilities during monthly payroll computation.
+
+---
+
+#### 5.2.8 Collection: `company_settings`
+*Defined in `backend/src/models/settings.model.ts` | Target collection: `company_settings`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Settings singleton identifier |
+| `shiftStartTime` | `String` | No | `required: true, default: "09:00", trim: true` | Standard shift start time (HH:mm) |
+| `shiftEndTime` | `String` | No | `required: true, default: "18:00", trim: true` | Standard shift conclusion time (HH:mm) |
+| `graceWindowEndTime` | `String` | No | `required: true, default: "09:30", trim: true` | Grace threshold before late flag triggers |
+| `standardWorkHoursPerDay` | `Number`| No | `required: true, default: 8, min: 1, max: 24` | Baseline daily working hours |
+| `lunchStartTime` | `String` | No | `required: true, default: "12:00", trim: true` | Company lunch hour beginning |
+| `lunchEndTime` | `String` | No | `required: true, default: "13:00", trim: true` | Company lunch hour conclusion |
+| `yearlyPaidLeaveQuota` | `Number` | No | `required: true, default: 18, min: 0` | Annual paid time off allotment per employee |
+| `updatedBy` | `ObjectId` | Yes | `ref: "User", default: null` | Admin who last reconfigured settings |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Creation timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Last modification timestamp |
+
+---
+
+#### 5.2.9 Collection: `notifications`
+*Defined in `backend/src/models/notification.model.ts` | Target collection: `notifications`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique notification event identifier |
+| `recipientId` | `ObjectId` | Yes | `ref: "User", default: null, index: true` | Target user (null for role broadcast) |
+| `targetRole` | `String` | Yes | `enum: ["HR", "ADMIN", null], default: null, index: true` | Role broadcast target |
+| `type` | `String` | No | `enum: NOTIFICATION_TYPES, required: true` | Categorical notification discriminator |
+| `title` | `String` | No | `required: true, trim: true` | Short heading shown in bell menu |
+| `message` | `String` | No | `required: true, trim: true` | Descriptive message text |
+| `link` | `String` | No | `required: true, default: "/dashboard", trim: true` | App navigation link when clicked |
+| `isRead` | `Boolean` | No | `default: false, index: true` | Read / unread status badge |
+| `metadata` | `Object` | No | `default: {}` | Contextual identifiers (leaveId, payrollId, etc.) |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Event creation timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Last update timestamp |
+
+*Compound Indexes for Ultra-Fast Retrieval*:
+- `{ recipientId: 1, isRead: 1, createdAt: -1 }`
+- `{ targetRole: 1, isRead: 1, createdAt: -1 }`
+
+---
+
+#### 5.2.10 Collection: `biometric_imports`
+*Defined in `backend/src/models/biometricImport.model.ts` | Target collection: `biometric_imports`*
+
+| Field Name | BSON Type | Nullable | Constraints & Indexing | Business Purpose |
+| :--- | :--- | :---: | :--- | :--- |
+| `_id` | `ObjectId` | No | Primary key | Unique import job identifier |
+| `fileName` | `String` | No | `required: true, trim: true` | Name of uploaded CSV file |
+| `uploadedBy` | `ObjectId` | No | `ref: "User", required: true, index: true` | HR or Admin who uploaded file |
+| `totalRows` | `Number` | No | `required: true, min: 0, default: 0` | Total records in CSV |
+| `successfulRows` | `Number` | No | `required: true, min: 0, default: 0` | Successfully processed records |
+| `failedRows` | `Number` | No | `required: true, min: 0, default: 0` | Malformed or failed records |
+| `errorLog` | `Array` | No | Embedded documents `[{ row, email, reason }]` | Detailed line-by-line parsing errors |
+| `uploadedAt` | `Date` | No | `default: Date.now, index: true` | Upload execution timestamp |
+| `createdAt` | `Date` | No | Managed via `timestamps: true` | Creation timestamp |
+| `updatedAt` | `Date` | No | Managed via `timestamps: true` | Update timestamp |
+
+---
+
+### 5.3 Compound Database Indexes & Integrity Constraints
+
+| Collection | Indexed Fields | Unique? | Optimization / Business Rule Enforced |
+| :--- | :--- | :---: | :--- |
+| `users` | `{ email: 1 }` | **Yes** | Prevents duplicate user accounts; optimizes login auth lookup |
+| `users` | `{ deactivatedAt: 1 }` | No | Powers 30-day soft-deletion cleanup cron job |
+| `attendances` | `{ userId: 1, date: 1 }` | **Yes** | Strict constraint: guarantees only 1 attendance log per user per day |
+| `overtime_requests` | `{ userId: 1, date: 1, status: 1 }`| No | Accelerates employee history and monthly payroll aggregation |
+| `salary_advances` | `{ userId: 1, monthYear: 1, isDeducted: 1 }` | No | Accelerates recovery deduction queries during payroll generation |
+| `notifications` | `{ recipientId: 1, isRead: 1, createdAt: -1 }` | No | Powers instantaneous topbar bell badge count and list sorting |
+| `notifications` | `{ targetRole: 1, isRead: 1, createdAt: -1 }` | No | Powers role-broadcast notification polling for HR/Admin |
+
+---
+
+### 5.4 Core Validation Schemas & Regular Expressions
 Defined symmetrically in [backend/src/types/employee.types.ts](file:///d:/HRMS/backend/src/types/employee.types.ts) and [frontend/src/types/employee.types.ts](file:///d:/HRMS/frontend/src/types/employee.types.ts):
 
 1. **`PASSWORD_REGEX`**:
