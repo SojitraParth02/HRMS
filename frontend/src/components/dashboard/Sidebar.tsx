@@ -1,12 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSidebarContext } from "../../context/SidebarContext";
-import { useAppDispatch } from "../../hooks/redux";
+import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { logout } from "../../store/slices/authSlice";
 import { SidebarNavItem } from "../../types/sidebar.types";
 import {
@@ -63,6 +63,7 @@ const NAV_ITEMS: SidebarNavItem[] = [
   {
     title: "Reports",
     href: "/reports",
+    roles: ["ADMIN", "HR"],
     icon: ({ className }: { className?: string }): React.ReactNode => (
       <ReportsIcon className={className ?? "w-5 h-5 shrink-0"} />
     ),
@@ -82,6 +83,15 @@ export const Sidebar: React.FC = () => {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
   const { isCollapsed, isMobileOpen, closeMobile } = useSidebarContext();
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const userRole = currentUser?.role;
+
+  const visibleNavItems = useMemo(() => {
+    return NAV_ITEMS.filter((item) => {
+      if (!item.roles) return true;
+      return userRole ? item.roles.includes(userRole) : false;
+    });
+  }, [userRole]);
 
   const isItemActive = (href: string): boolean => {
     if (href === "/dashboard") {
@@ -150,7 +160,7 @@ export const Sidebar: React.FC = () => {
 
           {/* Navigation Menu */}
           <nav aria-label="Sidebar Navigation" className="mt-5 space-y-1">
-            {NAV_ITEMS.map((item: SidebarNavItem) => {
+            {visibleNavItems.map((item: SidebarNavItem) => {
               const active: boolean = isItemActive(item.href);
 
               return (

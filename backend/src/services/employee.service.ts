@@ -73,32 +73,39 @@ export class EmployeeService {
   }
 
   /**
-   * Retrieves all registered employees, sanitized of sensitive credentials.
+   * Retrieves all registered employees, sanitized of sensitive credentials and role-filtered.
    */
-  public async getAllEmployeesService(): Promise<IEmployee[]> {
+  public async getAllEmployeesService(
+    requesterId?: string,
+    requesterRole?: UserRole
+  ): Promise<IEmployee[]> {
     const employees: IUserDocument[] = await this.repository.getAllEmployees();
-    return employees.map((emp) => this.mapToSanitizedEmployee(emp));
+    return employees.map((emp) => this.mapToSanitizedEmployee(emp, requesterId, requesterRole));
   }
 
   /**
-   * Retrieves paginated registered employees, sanitized of sensitive credentials.
+   * Retrieves paginated registered employees, sanitized of sensitive credentials and role-filtered.
    */
   public async getPaginatedEmployeesService(
     page: number = 1,
     limit: number = 10,
     search?: string,
     department?: string,
-    role?: string
+    role?: string,
+    requesterId?: string,
+    requesterRole?: UserRole
   ): Promise<{ employees: IEmployee[]; total: number }> {
     const { employees, total } = await this.repository.getPaginatedEmployees(
       page,
       limit,
       search,
       department,
-      role
+      role,
+      requesterRole,
+      requesterId
     );
     return {
-      employees: employees.map((emp) => this.mapToSanitizedEmployee(emp)),
+      employees: employees.map((emp) => this.mapToSanitizedEmployee(emp, requesterId, requesterRole)),
       total,
     };
   }
@@ -273,17 +280,26 @@ export class EmployeeService {
 
   /**
    * Sanitizes Mongoose document into a strict IEmployee representation.
+   * If requester is EMPLOYEE, hides salary and phone number for other employees.
    */
-  private mapToSanitizedEmployee(doc: IUserDocument): IEmployee {
+  private mapToSanitizedEmployee(
+    doc: IUserDocument,
+    requesterId?: string,
+    requesterRole?: UserRole
+  ): IEmployee {
+    const isEmployee = requesterRole === "EMPLOYEE";
+    const isSelf = Boolean(requesterId && doc._id.toString() === requesterId);
+    const canSeeSensitiveInfo = !isEmployee || isSelf;
+
     return {
       id: doc._id.toString(),
       username: doc.username,
       email: doc.email,
       role: doc.role,
-      phone: doc.phone ?? "",
+      phone: canSeeSensitiveInfo ? (doc.phone ?? "") : "",
       department: doc.department ?? "",
       designation: doc.designation ?? "",
-      monthlySalary: doc.monthlySalary ?? 0,
+      monthlySalary: canSeeSensitiveInfo ? (doc.monthlySalary ?? 0) : 0,
       status: doc.status,
       joiningDate: doc.joiningDate instanceof Date ? doc.joiningDate.toISOString() : String(doc.joiningDate),
       createdBy: doc.createdBy ? doc.createdBy.toString() : null,

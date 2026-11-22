@@ -85,13 +85,17 @@ export class EmployeeController {
       const search = req.query.search ? String(req.query.search) : undefined;
       const department = req.query.department ? String(req.query.department) : undefined;
       const role = req.query.role ? String(req.query.role) : undefined;
+      const requesterId = req.user?.id;
+      const requesterRole = req.user?.role;
 
       const { employees, total } = await this.service.getPaginatedEmployeesService(
         page,
         limit,
         search,
         department,
-        role
+        role,
+        requesterId,
+        requesterRole
       );
 
       res.status(200).json(formatPaginatedResponse(employees, page, limit, total));

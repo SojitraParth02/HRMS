@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { UserRole } from "./employee.types";
 
 export interface SidebarContextType {
   isCollapsed: boolean;
@@ -16,4 +17,5 @@ export interface SidebarNavItem {
   title: string;
   href: string;
   icon: (props: { className?: string }) => ReactNode;
+  roles?: readonly UserRole[];
 }
