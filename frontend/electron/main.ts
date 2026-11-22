@@ -68,6 +68,13 @@ async function createWindow(): Promise<void> {
     mainWindow?.show();
   });
 
+  // Fallback to guarantee window visibility and avoid hanging in background
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      mainWindow.show();
+    }
+  }, 2500);
+
   // Open external links in user's default browser instead of Electron window
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http:") || url.startsWith("https:")) {
@@ -88,7 +95,12 @@ async function createWindow(): Promise<void> {
     }
   } else {
     // Production static serving from Next.js exported 'out' directory
-    await loadURL(mainWindow);
+    try {
+      await loadURL(mainWindow);
+    } catch (err) {
+      console.error("Failed to load static URL:", err);
+      mainWindow?.show();
+    }
   }
 
   mainWindow.on("closed", () => {
