@@ -27,6 +27,7 @@
         "arch": ["x64", "arm64"]
       }
     ],
+    "artifactName": "HRMS-${version}-${target}.${ext}",
     "category": "public.app-category.business",
     "icon": "build-resources/icon.icns",
     "hardenedRuntime": true,
@@ -61,6 +62,7 @@
         "arch": ["x64"]
       }
     ],
+    "artifactName": "HRMS-${version}-${target}.${ext}",
     "icon": "build-resources/icon.ico"
   },
   "nsis": {
