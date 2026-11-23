@@ -1,7 +1,7 @@
 # HRMS Enterprise Desktop Application
 ### Standalone Cross-Platform Human Resource & Workforce Management System (macOS & Windows)
 
-[![Build & Release Desktop Application](https://github.com/parth-sojitra/HRMS/actions/workflows/desktop-build.yml/badge.svg)](https://github.com/parth-sojitra/HRMS/actions/workflows/desktop-build.yml)
+[![Build & Release Desktop Application](https://github.com/SojitraParth02/HRMS/actions/workflows/desktop-build.yml/badge.svg)](https://github.com/SojitraParth02/HRMS/actions/workflows/desktop-build.yml)
 [![Node.js Runtime](https://img.shields.io/badge/Node.js-v20%20%7C%20v22-green.svg)](https://nodejs.org/)
 [![Next.js Framework](https://img.shields.io/badge/Next.js-15.5.29%20App%20Router-black.svg)](https://nextjs.org/)
 [![Electron Runtime](https://img.shields.io/badge/Electron-Desktop%20Runtime-47848F.svg)](https://www.electronjs.org/)
@@ -12,14 +12,14 @@
 
 ## 1. Quick Download (Pre-built Desktop Binaries)
 
-Evaluators and users can directly download the official pre-compiled desktop application from **[GitHub Releases](https://github.com/parth-sojitra/HRMS/releases)**:
+Evaluators and users can directly download the official pre-compiled desktop application from **[GitHub Releases](https://github.com/SojitraParth02/HRMS/releases)**:
 
 | Operating System | Binary Package | Architecture | Direct Download |
 |---|---|---|:---:|
-| **Windows 10 / 11** | `HRMS-Setup-1.0.0.exe` | x64 (NSIS Installer) | [Download Installer](https://github.com/parth-sojitra/HRMS/releases/latest) |
-| **Windows Portable** | `HRMS-1.0.0-portable.exe` | x64 (Standalone Zero-Install) | [Download Portable](https://github.com/parth-sojitra/HRMS/releases/latest) |
-| **macOS** | `HRMS-1.0.0.dmg` | Intel (x64) & Apple Silicon (arm64) | [Download DMG](https://github.com/parth-sojitra/HRMS/releases/latest) |
-| **macOS Portable** | `HRMS-1.0.0-mac.zip` | Universal Zip Archive | [Download Zip](https://github.com/parth-sojitra/HRMS/releases/latest) |
+| **Windows 10 / 11** | `HRMS-Setup-1.0.0.exe` | x64 (NSIS Installer) | [Download Installer](https://github.com/SojitraParth02/HRMS/releases/latest) |
+| **Windows Portable** | `HRMS-1.0.0-portable.exe` | x64 (Standalone Zero-Install) | [Download Portable](https://github.com/SojitraParth02/HRMS/releases/latest) |
+| **macOS** | `HRMS-1.0.0.dmg` | Intel (x64) & Apple Silicon (arm64) | [Download DMG](https://github.com/SojitraParth02/HRMS/releases/latest) |
+| **macOS Portable** | `HRMS-1.0.0-mac.zip` | Universal Zip Archive | [Download Zip](https://github.com/SojitraParth02/HRMS/releases/latest) |
 
 *The desktop application connects automatically to our live cloud backend on Render and persistent MongoDB Atlas cluster.*
 
@@ -92,7 +92,7 @@ Run the desktop application locally connecting to the live Render backend:
 ### Clone & Run Locally
 ```bash
 # 1. Clone the repository
-git clone https://github.com/parth-sojitra/HRMS.git
+git clone https://github.com/SojitraParth02/HRMS.git
 cd HRMS
 
 # 2. Navigate to frontend directory and install dependencies
