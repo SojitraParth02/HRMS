@@ -20,20 +20,26 @@
     "target": [
       {
         "target": "dmg",
-        "arch": ["x64", "arm64"]
+        "arch": [
+          "x64",
+          "arm64"
+        ]
       },
       {
         "target": "zip",
-        "arch": ["x64", "arm64"]
+        "arch": [
+          "x64",
+          "arm64"
+        ]
       }
     ],
-    "artifactName": "HRMS-${version}-${target}.${ext}",
     "category": "public.app-category.business",
     "icon": "build-resources/icon.icns",
     "hardenedRuntime": true,
     "gatekeeperAssess": false
   },
   "dmg": {
+    "artifactName": "HRMS-${version}.${ext}",
     "contents": [
       {
         "x": 130,
@@ -55,14 +61,17 @@
     "target": [
       {
         "target": "nsis",
-        "arch": ["x64"]
+        "arch": [
+          "x64"
+        ]
       },
       {
         "target": "portable",
-        "arch": ["x64"]
+        "arch": [
+          "x64"
+        ]
       }
     ],
-    "artifactName": "HRMS-${version}-${target}.${ext}",
     "icon": "build-resources/icon.ico"
   },
   "nsis": {
@@ -72,6 +81,10 @@
     "createStartMenuShortcut": true,
     "shortcutName": "HRMS Desktop",
     "installerIcon": "build-resources/icon.ico",
-    "uninstallerIcon": "build-resources/icon.ico"
+    "uninstallerIcon": "build-resources/icon.ico",
+    "artifactName": "HRMS-Setup-${version}.${ext}"
+  },
+  "portable": {
+    "artifactName": "HRMS-${version}-portable.${ext}"
   }
 }
