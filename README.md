@@ -12,14 +12,14 @@
 
 ## 1. Quick Download (Pre-built Desktop Binaries)
 
-Evaluators and users can directly download the official pre-compiled desktop application from **[GitHub Releases](https://github.com/SojitraParth02/HRMS/releases)**:
+Evaluators and users can directly download the official pre-compiled desktop application from **[GitHub Releases](https://github.com/SojitraParth02/HRMS/releases)** or monitor live multi-OS builds on **[GitHub Actions](https://github.com/SojitraParth02/HRMS/actions)**:
 
-| Operating System | Binary Package | Architecture | Direct Download |
-|---|---|---|:---:|
-| **Windows 10 / 11** | `HRMS-Setup-1.0.0.exe` | x64 (NSIS Installer) | [Download Installer](https://github.com/SojitraParth02/HRMS/releases/latest) |
-| **Windows Portable** | `HRMS-1.0.0-portable.exe` | x64 (Standalone Zero-Install) | [Download Portable](https://github.com/SojitraParth02/HRMS/releases/latest) |
-| **macOS** | `HRMS-1.0.0.dmg` | Intel (x64) & Apple Silicon (arm64) | [Download DMG](https://github.com/SojitraParth02/HRMS/releases/latest) |
-| **macOS Portable** | `HRMS-1.0.0-mac.zip` | Universal Zip Archive | [Download Zip](https://github.com/SojitraParth02/HRMS/releases/latest) |
+| Operating System | Binary Package | Architecture | Direct 1-Click Download | Release Page |
+|---|---|---|:---:|:---:|
+| **Windows 10 / 11** | `HRMS-Setup-1.0.0.exe` | x64 (NSIS Installer) | [Download Installer](https://github.com/SojitraParth02/HRMS/releases/latest/download/HRMS-Setup-1.0.0.exe) | [View Release](https://github.com/SojitraParth02/HRMS/releases/latest) |
+| **Windows Portable** | `HRMS-1.0.0-portable.exe` | x64 (Standalone Zero-Install) | [Download Portable](https://github.com/SojitraParth02/HRMS/releases/latest/download/HRMS-1.0.0-portable.exe) | [View Release](https://github.com/SojitraParth02/HRMS/releases/latest) |
+| **macOS** | `HRMS-1.0.0.dmg` | Intel (x64) & Apple Silicon (arm64) | [Download DMG](https://github.com/SojitraParth02/HRMS/releases/latest/download/HRMS-1.0.0.dmg) | [View Release](https://github.com/SojitraParth02/HRMS/releases/latest) |
+| **macOS Portable** | `HRMS-1.0.0-mac.zip` | Universal Zip Archive | [Download Zip](https://github.com/SojitraParth02/HRMS/releases/latest/download/HRMS-1.0.0-mac.zip) | [View Release](https://github.com/SojitraParth02/HRMS/releases/latest) |
 
 *The desktop application connects automatically to our live cloud backend on Render and persistent MongoDB Atlas cluster.*
 
