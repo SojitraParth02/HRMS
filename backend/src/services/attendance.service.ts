@@ -40,6 +40,9 @@ import {
 } from "../utils/errors";
 
 export class AttendanceService {
+  // Indian Standard Time (IST) offset in milliseconds (UTC+05:30)
+  private readonly istOffsetMs: number = 330 * 60 * 1000;
+
   constructor(
     private readonly attendanceRepo: AttendanceRepository = attendanceRepository,
     private readonly correctionRepo: AttendanceCorrectionRepository = attendanceCorrectionRepository,
@@ -48,19 +51,43 @@ export class AttendanceService {
     private readonly employeeRepo: EmployeeRepository = employeeRepository
   ) { }
 
-  public normalizeToMidnight(date: Date = new Date()): Date {
-    const normalized = new Date(date);
-    normalized.setHours(0, 0, 0, 0);
-    return normalized;
+  /**
+   * Returns a Date object shifted to Indian Standard Time (IST) representation.
+   */
+  public getISTDate(date: Date = new Date()): Date {
+    return new Date(date.getTime() + this.istOffsetMs);
   }
 
-  public getShiftDateTime(baseDate: Date, timeStr: string): Date {
+  /**
+   * Returns the day of the week (0 = Sunday, 1 = Monday, ...) in Indian Standard Time (IST).
+   */
+  public getISTDay(date: Date = new Date()): number {
+    return this.getISTDate(date).getUTCDay();
+  }
+
+  /**
+   * Normalizes date to midnight representing the calendar day in Indian Standard Time (IST).
+   * Stored in MongoDB as a consistent UTC midnight timestamp for that IST date.
+   */
+  public normalizeToMidnight(date: Date = new Date()): Date {
+    const ist = this.getISTDate(date);
+    const year = ist.getUTCFullYear();
+    const month = ist.getUTCMonth();
+    const day = ist.getUTCDate();
+    return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+  }
+
+  /**
+   * Constructs the exact UTC timestamp corresponding to a shift HH:mm time in IST on the given calendar day.
+   */
+  public getShiftDateTime(baseMidnightUTC: Date, timeStr: string): Date {
     const [hoursStr, minutesStr] = timeStr.split(":");
     const hours = parseInt(hoursStr, 10);
     const minutes = parseInt(minutesStr, 10);
-    const dt = new Date(baseDate);
-    dt.setHours(hours, minutes, 0, 0);
-    return dt;
+    // baseMidnightUTC represents 00:00:00.000 UTC for the IST calendar day
+    // In IST, 00:00:00 IST is (baseMidnightUTC - 5h 30m) in UTC
+    const istMidnightUtcEpoch = baseMidnightUTC.getTime() - this.istOffsetMs;
+    return new Date(istMidnightUtcEpoch + (hours * 60 + minutes) * 60 * 1000);
   }
 
   public calculatePunchInMetrics(
@@ -164,7 +191,7 @@ export class AttendanceService {
 
   public async punchIn(userId: string): Promise<IAttendanceDocument> {
     const now = new Date();
-    if (now.getDay() === 0) {
+    if (this.getISTDay(now) === 0) {
       throw new BadRequestError("Today is Sunday (Weekly Off). Punch-in is disabled.");
     }
 
@@ -215,7 +242,7 @@ export class AttendanceService {
 
   public async punchOut(userId: string): Promise<IAttendanceDocument> {
     const now = new Date();
-    if (now.getDay() === 0) {
+    if (this.getISTDay(now) === 0) {
       throw new BadRequestError("Today is Sunday (Weekly Off). Punch-out is disabled.");
     }
 

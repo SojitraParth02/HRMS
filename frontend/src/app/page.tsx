@@ -12,11 +12,15 @@ export default function HomePage() {
     const storedToken: string | null =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    if (isAuthenticated || Boolean(storedToken) || Boolean(token)) {
-      router.replace("/dashboard");
-    } else {
-      router.replace("/login");
+    const hasAuth = isAuthenticated || Boolean(storedToken) || Boolean(token);
+    const target = hasAuth ? "/dashboard/" : "/login/";
+
+    if (typeof window !== "undefined" && window.location.protocol === "app:") {
+      window.location.replace(target);
+      return;
     }
+
+    router.replace(target);
   }, [isAuthenticated, token, router]);
 
   return (
